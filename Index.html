@@ -8837,59 +8837,100 @@ let googleAccessToken = null;
 let googleUserEmail = null;
 let driveFileId = null;
 let isSyncing = false;
+let tokenClient = null;
+let tokenRefreshTimer = null;
 
 // Αρχικοποίηση Google Auth
 function initGoogleAuth() {
-    // Ανάκτηση αποθηκευμένου token
-    const savedToken = localStorage.getItem('googleAccessToken');
     const savedEmail = localStorage.getItem('googleUserEmail');
     const savedFileId = localStorage.getItem('driveFileId');
-    const tokenExpiry = localStorage.getItem('googleTokenExpiry');
-    
-    if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
-        googleAccessToken = savedToken;
-        googleUserEmail = savedEmail;
-        driveFileId = savedFileId;
+    const wasConnected = localStorage.getItem('googleWasConnected');
+
+    googleUserEmail = savedEmail;
+    driveFileId = savedFileId;
+
+    // Αρχικοποίηση token client
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        prompt: '',
+        callback: (response) => {
+            if (response.error) {
+                // Αν αποτύχει silent refresh, ζητάμε login
+                if (response.error === 'interaction_required' || response.error === 'login_required') {
+                    localStorage.removeItem('googleWasConnected');
+                    updateGoogleAuthUI(false);
+                }
+                return;
+            }
+            googleAccessToken = response.access_token;
+            const expiry = Date.now() + (response.expires_in * 1000);
+            localStorage.setItem('googleAccessToken', googleAccessToken);
+            localStorage.setItem('googleTokenExpiry', expiry.toString());
+            localStorage.setItem('googleWasConnected', '1');
+            updateGoogleAuthUI(true);
+
+            // Προγραμματισμός αυτόματης ανανέωσης 5 λεπτά πριν λήξει
+            scheduleTokenRefresh(response.expires_in);
+
+            // Συγχρονισμός κατά την εκκίνηση (μόνο αν μόλις φορτώθηκε η σελίδα)
+            if (!googleAccessToken) {
+                setTimeout(() => syncFromDrive(), 1000);
+            }
+        }
+    });
+
+    if (wasConnected) {
+        // Ήταν συνδεδεμένος — ανανέωσε token αθόρυβα
         updateGoogleAuthUI(true);
-        // Συγχρονισμός κατά την εκκίνηση
-        setTimeout(() => syncFromDrive(), 1500);
+        silentTokenRefresh();
     }
+}
+
+function silentTokenRefresh() {
+    if (!tokenClient) return;
+    tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function scheduleTokenRefresh(expiresIn) {
+    clearTimeout(tokenRefreshTimer);
+    // Ανανέωση 5 λεπτά πριν λήξει (expiresIn σε δευτερόλεπτα)
+    const refreshIn = Math.max((expiresIn - 300) * 1000, 60000);
+    tokenRefreshTimer = setTimeout(() => silentTokenRefresh(), refreshIn);
 }
 
 function handleGoogleAuth() {
     if (googleAccessToken) {
-        // Είναι ήδη συνδεδεμένος — show menu
         showGoogleSyncMenu();
     } else {
-        // Σύνδεση
         startGoogleLogin();
     }
 }
 
 function startGoogleLogin() {
-    const client = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        callback: (response) => {
-            if (response.error) {
-                showSyncToast('❌ Σφάλμα σύνδεσης: ' + response.error, 'error');
-                return;
+    if (!tokenClient) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: DRIVE_SCOPE,
+            callback: (response) => {
+                if (response.error) {
+                    showSyncToast('❌ Σφάλμα σύνδεσης: ' + response.error, 'error');
+                    return;
+                }
+                googleAccessToken = response.access_token;
+                const expiry = Date.now() + (response.expires_in * 1000);
+                localStorage.setItem('googleAccessToken', googleAccessToken);
+                localStorage.setItem('googleTokenExpiry', expiry.toString());
+                localStorage.setItem('googleWasConnected', '1');
+                fetchGoogleUserInfo();
+                updateGoogleAuthUI(true);
+                showSyncToast('✅ Συνδέθηκες με Google!', 'success');
+                scheduleTokenRefresh(response.expires_in);
+                setTimeout(() => syncFromDrive(), 500);
             }
-            googleAccessToken = response.access_token;
-            // Token ισχύει για 1 ώρα
-            const expiry = Date.now() + (response.expires_in * 1000);
-            localStorage.setItem('googleAccessToken', googleAccessToken);
-            localStorage.setItem('googleTokenExpiry', expiry.toString());
-            
-            // Λήψη email χρήστη
-            fetchGoogleUserInfo();
-            updateGoogleAuthUI(true);
-            showSyncToast('✅ Συνδέθηκες με Google!', 'success');
-            // Αρχικός συγχρονισμός
-            setTimeout(() => syncFromDrive(), 500);
-        }
-    });
-    client.requestAccessToken();
+        });
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
 async function fetchGoogleUserInfo() {
@@ -9089,6 +9130,7 @@ async function downloadDriveFile(fileId) {
 }
 
 function googleSignOut() {
+    clearTimeout(tokenRefreshTimer);
     if (googleAccessToken) {
         google.accounts.oauth2.revoke(googleAccessToken, () => {});
     }
@@ -9099,6 +9141,7 @@ function googleSignOut() {
     localStorage.removeItem('googleUserEmail');
     localStorage.removeItem('driveFileId');
     localStorage.removeItem('googleTokenExpiry');
+    localStorage.removeItem('googleWasConnected');
     updateGoogleAuthUI(false);
     showSyncToast('👋 Αποσυνδέθηκες από Google', 'info');
 }
