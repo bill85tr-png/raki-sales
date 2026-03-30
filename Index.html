@@ -10,10 +10,22 @@
     <meta name="apple-mobile-web-app-title" content="Raki Sales">
 
     <title>Raki Sales</title>
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
     <!-- Font Awesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('Service Worker εγκαταστάθηκε'))
+            .catch(e => console.log('Service Worker σφάλμα:', e));
+        });
+      }
+    </script>
     <!-- SheetJS CDN για Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- ExcelJS για στυλ/χρώματα στο Excel -->

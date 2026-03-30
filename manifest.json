@@ -1,0 +1,22 @@
+{
+  "name": "Ρακή Πωλήσεις",
+  "short_name": "Ρακή",
+  "description": "Διαχείριση Πωλήσεων & Αποθέματος Ρακής",
+  "start_url": "/raki-sales/Index.html",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#4CAF50",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/763/763353.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/763/763353.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
