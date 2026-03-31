@@ -8856,35 +8856,73 @@ function initGoogleAuth() {
         prompt: '',
         callback: (response) => {
             if (response.error) {
-                // Αν αποτύχει silent refresh, ζητάμε login
                 if (response.error === 'interaction_required' || response.error === 'login_required') {
-                    localStorage.removeItem('googleWasConnected');
-                    updateGoogleAuthUI(false);
+                    // Δεν μπορεί να γίνει silent — δείξε banner
+                    if (localStorage.getItem('googleWasConnected')) {
+                        showReconnectBanner();
+                    }
                 }
                 return;
             }
+            const isFirstLoad = !googleAccessToken;
             googleAccessToken = response.access_token;
             const expiry = Date.now() + (response.expires_in * 1000);
             localStorage.setItem('googleAccessToken', googleAccessToken);
             localStorage.setItem('googleTokenExpiry', expiry.toString());
             localStorage.setItem('googleWasConnected', '1');
+            hideReconnectBanner();
             updateGoogleAuthUI(true);
-
-            // Προγραμματισμός αυτόματης ανανέωσης 5 λεπτά πριν λήξει
             scheduleTokenRefresh(response.expires_in);
-
-            // Συγχρονισμός κατά την εκκίνηση (μόνο αν μόλις φορτώθηκε η σελίδα)
-            if (!googleAccessToken) {
+            if (isFirstLoad) {
                 setTimeout(() => syncFromDrive(), 1000);
             }
         }
     });
 
     if (wasConnected) {
-        // Ήταν συνδεδεμένος — ανανέωσε token αθόρυβα
         updateGoogleAuthUI(true);
         silentTokenRefresh();
     }
+}
+
+function showReconnectBanner() {
+    if (document.getElementById('reconnectBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'reconnectBanner';
+    banner.style.cssText = `
+        position: fixed; top: 70px; left: 0; right: 0; z-index: 9998;
+        background: #E65100; color: white;
+        padding: 10px 16px;
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
+    banner.innerHTML = `
+        <span style="font-size:13px;">☁️ Απαιτείται επανασύνδεση Google</span>
+        <button onclick="quickReconnect()" style="
+            background: white; color: #E65100; border: none; border-radius: 20px;
+            padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
+            white-space: nowrap;">
+            Σύνδεση
+        </button>
+    `;
+    document.body.appendChild(banner);
+}
+
+function hideReconnectBanner() {
+    const b = document.getElementById('reconnectBanner');
+    if (b) b.remove();
+}
+
+function quickReconnect() {
+    if (!tokenClient) return;
+    // Προσπάθεια χωρίς prompt πρώτα
+    tokenClient.requestAccessToken({ prompt: '' });
+    // Αν αποτύχει πάλι, ο callback θα ζητήσει consent
+    setTimeout(() => {
+        if (!googleAccessToken) {
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        }
+    }, 2000);
 }
 
 function silentTokenRefresh() {
