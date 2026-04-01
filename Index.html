@@ -8898,8 +8898,9 @@ function showReconnectBanner() {
         display: flex; align-items: center; justify-content: space-between; gap: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     `;
+    const emailShort = googleUserEmail ? `(${googleUserEmail.split('@')[0]})` : '';
     banner.innerHTML = `
-        <span style="font-size:13px;">☁️ Απαιτείται επανασύνδεση Google</span>
+        <span style="font-size:13px;">☁️ Απαιτείται επανασύνδεση ${emailShort}</span>
         <button onclick="quickReconnect()" style="
             background: white; color: #E65100; border: none; border-radius: 20px;
             padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
@@ -8917,12 +8918,12 @@ function hideReconnectBanner() {
 
 function quickReconnect() {
     if (!tokenClient) return;
-    // Προσπάθεια χωρίς prompt πρώτα
-    tokenClient.requestAccessToken({ prompt: '' });
-    // Αν αποτύχει πάλι, ο callback θα ζητήσει consent
+    // Χρησιμοποιούμε login_hint για να προεπιλέξει τον σωστό λογαριασμό
+    const hint = localStorage.getItem('googleUserEmail') || '';
+    tokenClient.requestAccessToken({ prompt: '', login_hint: hint });
     setTimeout(() => {
         if (!googleAccessToken) {
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            tokenClient.requestAccessToken({ prompt: 'select_account', login_hint: hint });
         }
     }, 2000);
 }
@@ -8970,7 +8971,7 @@ function startGoogleLogin() {
             }
         });
     }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    tokenClient.requestAccessToken({ prompt: 'consent', login_hint: localStorage.getItem('googleUserEmail') || '' });
 }
 
 async function fetchGoogleUserInfo() {
