@@ -10,24 +10,10 @@
     <meta name="apple-mobile-web-app-title" content="Raki Sales">
 
     <title>Raki Sales</title>
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <!-- Font Awesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker εγκαταστάθηκε'))
-            .catch(e => console.log('Service Worker σφάλμα:', e));
-        });
-      }
-    </script>
     <!-- SheetJS CDN για Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- ExcelJS για στυλ/χρώματα στο Excel -->
@@ -882,6 +868,126 @@
             margin: 0;
         }
         
+        /* Credit Popup */
+        .credit-popup-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        .credit-popup-overlay.visible {
+            display: flex;
+        }
+        .credit-popup {
+            background: var(--card-bg);
+            border: 1px solid #4CAF50;
+            border-radius: 16px;
+            padding: 0;
+            width: 88%;
+            max-width: 340px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            animation: popupIn 0.2s ease;
+        }
+        @keyframes popupIn {
+            from { transform: scale(0.88); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+        .credit-popup-header {
+            background: linear-gradient(135deg, #1B5E20, #2E7D32);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .credit-popup-header-icon {
+            font-size: 28px;
+        }
+        .credit-popup-header-text strong {
+            display: block;
+            font-size: 16px;
+            color: white;
+        }
+        .credit-popup-header-text small {
+            font-size: 12px;
+            color: rgba(255,255,255,0.75);
+        }
+        .credit-popup-body {
+            padding: 20px;
+            text-align: center;
+        }
+        .credit-popup-amount {
+            font-size: 32px;
+            font-weight: 800;
+            color: #4CAF50;
+            margin-bottom: 4px;
+        }
+        .credit-popup-sublabel {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+        .credit-popup-toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--input-bg);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+        }
+        .credit-popup-toggle-label {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .credit-popup-footer {
+            padding: 0 20px 20px;
+        }
+        .credit-popup-confirm-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: #4CAF50;
+            color: white;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .credit-popup-confirm-btn:hover { background: #388E3C; }
+        /* Mini credit indicator μέσα στο sale modal */
+        .credit-active-indicator {
+            display: none;
+            background: #1B5E20;
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            color: #A5D6A7;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            cursor: pointer;
+        }
+        .credit-active-indicator.visible {
+            display: flex;
+        }
+        /* Credit badge στη λίστα πελατών */
+        .credit-badge {
+            background: #2E7D32;
+            color: #A5D6A7;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin-left: 6px;
+            white-space: nowrap;
+        }
+
         .info-text {
             font-size: 13px;
             color: #aaa;
@@ -3576,6 +3682,12 @@
                 <button class="add-customer-btn" onclick="showCustomerModalFromSale()"><i class="fas fa-user-plus"></i></button>
                 <select id="saleCustomer" style="display:none;"><option value="">Επιλέξτε Πελάτης</option></select>
             </div>
+            <!-- Credit Active Indicator (εμφανίζεται μόνο αν το credit είναι ενεργό) -->
+            <div class="credit-active-indicator" id="creditActiveIndicator" onclick="openCreditPopup()">
+                <span>💰</span>
+                <span id="creditActiveText">2.50€ credit θα χρησιμοποιηθεί</span>
+                <span style="margin-left:auto; font-size:11px; opacity:0.7;">αλλαγή</span>
+            </div>
             <!-- Τύπος -->
             <div class="bottle-buttons-container" style="margin:6px 0;">
                 <button class="bottle-btn" id="saleBottleBtn05" data-type="0.5">0.5L</button>
@@ -3614,7 +3726,26 @@
                     <label class="slide-toggle"><input type="checkbox" id="salePaymentPaid" onchange="handleToggleChange('payment', 'paid')"><span class="slide-toggle-slider"></span></label>
                 </div>
             </div>
-            <div class="price-display" style="margin:10px 0;">Τιμή πώλησης: <span id="salePriceDisplay">7.50€</span> (<span id="salePricePerLiter">5</span>€/λίτρο)</div>
+            <div style="display:flex; align-items:stretch; gap:10px; margin:10px 0;">
+                <div class="price-display" style="margin:0; flex:1; padding:8px 14px; border-radius:10px; background:var(--input-bg); border:1px solid var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;">
+                    <span style="opacity:0.65; font-size:12px;">Τιμή πώλησης</span>
+                    <span style="display:flex; align-items:baseline; gap:5px;">
+                        <span id="salePriceDisplay" style="font-weight:700; font-size:17px;">7.50€</span>
+                        <span style="opacity:0.5; font-size:11px;">(<span id="salePricePerLiter">5</span>€/λ)</span>
+                    </span>
+                </div>
+                <div onclick="onGaveMoreToggleBox()" id="gaveMoreToggleBox"
+                     style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:8px;
+                            padding:8px 14px; border-radius:10px; background:var(--input-bg);
+                            border:1px solid var(--border-color); cursor:pointer;
+                            transition: all 0.2s; user-select:none;">
+                    <i class="fas fa-coins" style="font-size:15px; color:var(--text-color); opacity:0.8;"></i>
+                    <label class="slide-toggle" style="margin:0; pointer-events:none;">
+                        <input type="checkbox" id="saleGaveMoreToggle">
+                        <span class="slide-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
             <input type="hidden" id="salePrice" value="7.50">
             <div class="datetime-inputs"><input type="date" id="saleDate"><input type="time" id="saleTime"></div>
         </div>
@@ -4364,6 +4495,7 @@
                 document.getElementById('saleIsGift').checked = false;
                 document.getElementById('salePriceDisplay').textContent = '';
                 calculateSalePrice();
+                resetCreditBanner();
                 // Setup bottle buttons
                 setupBottleButtons('sale');
             } else if (modalId === 'transferModal') {
@@ -4546,7 +4678,8 @@
                 if (dropdownOptions) {
                     const item = document.createElement('div');
                     item.className = 'customer-dropdown-option';
-                    item.textContent = label;
+                    const creditBadge = cust.credit > 0 ? ` <span style="font-size:10px;color:#A5D6A7;font-weight:700;">💰${parseFloat(cust.credit).toFixed(2)}€</span>` : '';
+                    item.innerHTML = label + creditBadge;
                     item.dataset.value = cust.id;
                     item.addEventListener('click', () => selectSaleCustomerFromDropdown(cust.id, label));
                     dropdownOptions.appendChild(item);
@@ -4619,6 +4752,7 @@
             }
 
             closeSaleCustomerDropdown();
+            updateSaleCreditBanner(id);
         }
 
         // Κλείσιμο dropdown πελατών όταν γίνεται κλικ έξω
@@ -4631,6 +4765,157 @@
                 menu.classList.remove('open');
             }
         });
+
+        // ===== CREDIT SYSTEM =====
+        let saleUseCreditAmount = 0;
+
+        function updateSaleCreditBanner(custId) {
+            // Κλείνουμε τον indicator αν υπήρχε από προηγούμενο πελάτη
+            resetCreditBanner();
+            const customer = customers.find(c => c.id == custId);
+            const credit = customer && customer.credit > 0 ? parseFloat(customer.credit) : 0;
+            if (credit > 0) {
+                // Ανοίγουμε αυτόματα το popup
+                openCreditPopup();
+            }
+        }
+
+        function openCreditPopup() {
+            const custId = document.getElementById('saleCustomer').value;
+            const customer = customers.find(c => c.id == custId);
+            if (!customer || !(customer.credit > 0)) return;
+
+            document.getElementById('creditPopupCustomerName').textContent = customer.nickname ? `${customer.name} (${customer.nickname})` : customer.name;
+            document.getElementById('creditPopupAmount').textContent = parseFloat(customer.credit).toFixed(2) + '€';
+            // Ανάκτηση τρέχουσας κατάστασης toggle
+            document.getElementById('creditPopupToggle').checked = saleUseCreditAmount > 0;
+            document.getElementById('creditPopupOverlay').classList.add('visible');
+        }
+
+        function onCreditPopupToggleChange() {
+            // live preview — τίποτα ακόμα, απλώς περιμένουμε confirm
+        }
+
+        function confirmCreditPopup() {
+            const custId = document.getElementById('saleCustomer').value;
+            const customer = customers.find(c => c.id == custId);
+            const useCredit = document.getElementById('creditPopupToggle').checked;
+            const credit = customer && customer.credit > 0 ? parseFloat(customer.credit) : 0;
+
+            saleUseCreditAmount = useCredit ? credit : 0;
+
+            // Ενημέρωση mini indicator
+            const indicator = document.getElementById('creditActiveIndicator');
+            const indicatorText = document.getElementById('creditActiveText');
+            if (useCredit && credit > 0) {
+                indicatorText.textContent = credit.toFixed(2) + '€ credit θα χρησιμοποιηθεί';
+                indicator.classList.add('visible');
+            } else {
+                indicator.classList.remove('visible');
+            }
+
+            document.getElementById('creditPopupOverlay').classList.remove('visible');
+        }
+
+        function resetCreditBanner() {
+            saleUseCreditAmount = 0;
+            const indicator = document.getElementById('creditActiveIndicator');
+            if (indicator) indicator.classList.remove('visible');
+            const overlay = document.getElementById('creditPopupOverlay');
+            if (overlay) overlay.classList.remove('visible');
+            const toggle = document.getElementById('creditPopupToggle');
+            if (toggle) toggle.checked = false;
+            // Επίσης reset gave-more
+            resetGaveMore();
+        }
+
+        // ===== GAVE MORE SYSTEM =====
+        let saleGaveMoreAmount = 0; // ποσό που έδωσε ο πελάτης (αν > τιμή → credit)
+
+        function onGaveMoreToggleBox() {
+            const toggle = document.getElementById('saleGaveMoreToggle');
+            const box = document.getElementById('gaveMoreToggleBox');
+            if (toggle.checked) {
+                // Απενεργοποίηση
+                resetGaveMore();
+            } else {
+                // Ενεργοποίηση
+                toggle.checked = true;
+                openGaveMorePopup();
+            }
+        }
+
+        function onGaveMoreToggle() {
+            const checked = document.getElementById('saleGaveMoreToggle').checked;
+            if (checked) {
+                openGaveMorePopup();
+            } else {
+                resetGaveMore();
+            }
+        }
+
+        function openGaveMorePopup() {
+            const priceText = document.getElementById('salePriceDisplay').textContent;
+            document.getElementById('gaveMoreSaleAmount').textContent = priceText;
+            document.getElementById('gaveMoreInput').value = '';
+            document.getElementById('gaveMorePreview').textContent = '';
+            document.getElementById('gaveMorePopupOverlay').classList.add('visible');
+            setTimeout(() => document.getElementById('gaveMoreInput').focus(), 150);
+        }
+
+        function updateGaveMorePreview() {
+            const val = parseFloat(document.getElementById('gaveMoreInput').value);
+            const priceEl = document.getElementById('salePriceDisplay').textContent;
+            const saleTotal = parseFloat(priceEl.replace('€','').replace(',','.')) || 0;
+            const preview = document.getElementById('gaveMorePreview');
+            if (isNaN(val) || val <= 0) { preview.textContent = ''; return; }
+            const diff = parseFloat((val - saleTotal).toFixed(2));
+            if (diff > 0) {
+                preview.innerHTML = `<span style="color:#4CAF50; font-weight:700;">+${diff.toFixed(2)}€ → credit για επόμενη φορά</span>`;
+            } else if (diff === 0) {
+                preview.innerHTML = `<span style="color:#aaa;">Ακριβής πληρωμή</span>`;
+            } else {
+                preview.innerHTML = `<span style="color:#f44336;">Λείπουν ${Math.abs(diff).toFixed(2)}€</span>`;
+            }
+        }
+
+        function confirmGaveMorePopup() {
+            const val = parseFloat(document.getElementById('gaveMoreInput').value);
+            if (isNaN(val) || val <= 0) {
+                cancelGaveMorePopup();
+                return;
+            }
+            saleGaveMoreAmount = val;
+            document.getElementById('gaveMorePopupOverlay').classList.remove('visible');
+            document.getElementById('saleGaveMoreToggle').checked = true;
+            const box = document.getElementById('gaveMoreToggleBox');
+            if (box) { box.style.borderColor = '#4CAF50'; box.style.background = '#1B5E20'; }
+        }
+
+        function cancelGaveMorePopup() {
+            document.getElementById('gaveMorePopupOverlay').classList.remove('visible');
+            document.getElementById('saleGaveMoreToggle').checked = false;
+            saleGaveMoreAmount = 0;
+        }
+
+        function resetGaveMore() {
+            saleGaveMoreAmount = 0;
+            const t = document.getElementById('saleGaveMoreToggle');
+            if (t) t.checked = false;
+            const overlay = document.getElementById('gaveMorePopupOverlay');
+            if (overlay) overlay.classList.remove('visible');
+            const box = document.getElementById('gaveMoreToggleBox');
+            if (box) { box.style.borderColor = ''; box.style.background = ''; }
+        }
+
+        function addCreditToCustomer(custId, amount) {
+            const customer = customers.find(c => c.id == custId);
+            if (!customer) return;
+            if (!customer.credit) customer.credit = 0;
+            customer.credit = parseFloat((customer.credit + amount).toFixed(2));
+            if (customer.credit < 0) customer.credit = 0;
+            saveData();
+        }
 
         // Παραλαβές - ΒΕΛΤΙΩΜΕΝΗ έκδοση με αποθήκευση αποθέματος μετά
         function addPurchase() {
@@ -4821,7 +5106,21 @@
 
             sales.push(newSale);
     
-            
+            // Αφαίρεση credit αν χρησιμοποιήθηκε
+            if (saleUseCreditAmount > 0) {
+                addCreditToCustomer(custId, -saleUseCreditAmount, 'Χρησιμοποιήθηκε σε πώληση');
+                saleUseCreditAmount = 0;
+            }
+
+            // Προσθήκη credit αν ο πελάτης έδωσε παραπάνω
+            if (saleGaveMoreAmount > 0) {
+                const diff = parseFloat((saleGaveMoreAmount - total).toFixed(2));
+                if (diff > 0) {
+                    addCreditToCustomer(custId, diff, 'Υπόλοιπο από πληρωμή');
+                }
+                saleGaveMoreAmount = 0;
+            }
+
             saveData();
             hideModal('saleModal');
             updateAllDisplays();
@@ -6913,7 +7212,7 @@ function toggleEditSortDropdown() {
                 customerDiv.innerHTML = `
                     <div class="edit-item-header">
                         <div>
-                            <strong>${customer.name}</strong>
+                            <strong>${customer.name}${customer.credit > 0 ? `<span class="credit-badge">💰 ${parseFloat(customer.credit).toFixed(2)}€</span>` : ''}</strong>
                             <div style="font-size: 12px; color: #aaa;">${(customer.nickname || 'Χωρίς ψευδώνυμο')} | ${customer.phone || 'Χωρίς τηλέφωνο'} | ${customer.date}</div>
                         </div>
                         <div class="edit-item-actions">
@@ -6929,6 +7228,10 @@ function toggleEditSortDropdown() {
                         <input type="text" id="edit-customer-name-${customer.id}" value="${customer.name}" placeholder="Ονοματεπώνυμο">
                         <input type="text" id="edit-customer-nickname-${customer.id}" value="${customer.nickname || ''}" placeholder="Ψευδώνυμο">
                         <input type="tel" id="edit-customer-phone-${customer.id}" value="${customer.phone || ''}" placeholder="Τηλέφωνο">
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:6px;">
+                            <label style="font-size:13px; color:#A5D6A7; white-space:nowrap;">💰 Credit (€):</label>
+                            <input type="number" id="edit-customer-credit-${customer.id}" value="${(customer.credit || 0).toFixed(2)}" placeholder="0.00" step="0.01" min="0" style="flex:1;">
+                        </div>
                         <div class="form-actions">
                             <button class="small-btn save-btn" onclick="saveCustomerEdit(${customer.id})">Αποθήκευση</button>
                             <button class="small-btn cancel-btn" onclick="cancelEdit('edit-customer-${customer.id}')">Άκυρο</button>
@@ -7181,6 +7484,9 @@ function toggleEditSortDropdown() {
                 return;
             }
             
+            const creditInput = document.getElementById(`edit-customer-credit-${customerId}`);
+            const credit = creditInput ? parseFloat(creditInput.value) || 0 : undefined;
+
             const customer = customers.find(c => c.id === customerId);
             if (customer) {
                 const oldCustomer = JSON.parse(JSON.stringify(customer));
@@ -7188,6 +7494,7 @@ function toggleEditSortDropdown() {
                 customer.name = name;
                 customer.nickname = nickname;
                 customer.phone = phone;
+                if (credit !== undefined) customer.credit = parseFloat(credit.toFixed(2));
                 saveData();
                 document.getElementById(`edit-customer-${customerId}`).style.display = 'none';
                 loadEditData();
@@ -8839,139 +9146,59 @@ let googleAccessToken = null;
 let googleUserEmail = null;
 let driveFileId = null;
 let isSyncing = false;
-let tokenClient = null;
-let tokenRefreshTimer = null;
 
 // Αρχικοποίηση Google Auth
 function initGoogleAuth() {
+    // Ανάκτηση αποθηκευμένου token
+    const savedToken = localStorage.getItem('googleAccessToken');
     const savedEmail = localStorage.getItem('googleUserEmail');
     const savedFileId = localStorage.getItem('driveFileId');
-    const wasConnected = localStorage.getItem('googleWasConnected');
-
-    googleUserEmail = savedEmail;
-    driveFileId = savedFileId;
-
-    // Αρχικοποίηση token client
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        prompt: '',
-        callback: (response) => {
-            if (response.error) {
-                if (response.error === 'interaction_required' || response.error === 'login_required') {
-                    // Δεν μπορεί να γίνει silent — δείξε banner
-                    if (localStorage.getItem('googleWasConnected')) {
-                        showReconnectBanner();
-                    }
-                }
-                return;
-            }
-            const isFirstLoad = !googleAccessToken;
-            googleAccessToken = response.access_token;
-            const expiry = Date.now() + (response.expires_in * 1000);
-            localStorage.setItem('googleAccessToken', googleAccessToken);
-            localStorage.setItem('googleTokenExpiry', expiry.toString());
-            localStorage.setItem('googleWasConnected', '1');
-            hideReconnectBanner();
-            updateGoogleAuthUI(true);
-            scheduleTokenRefresh(response.expires_in);
-            if (isFirstLoad) {
-                setTimeout(() => syncFromDrive(), 1000);
-            }
-        }
-    });
-
-    if (wasConnected) {
+    const tokenExpiry = localStorage.getItem('googleTokenExpiry');
+    
+    if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
+        googleAccessToken = savedToken;
+        googleUserEmail = savedEmail;
+        driveFileId = savedFileId;
         updateGoogleAuthUI(true);
-        silentTokenRefresh();
+        // Συγχρονισμός κατά την εκκίνηση
+        setTimeout(() => syncFromDrive(), 1500);
     }
-}
-
-function showReconnectBanner() {
-    if (document.getElementById('reconnectBanner')) return;
-    const banner = document.createElement('div');
-    banner.id = 'reconnectBanner';
-    banner.style.cssText = `
-        position: fixed; top: 70px; left: 0; right: 0; z-index: 9998;
-        background: #E65100; color: white;
-        padding: 10px 16px;
-        display: flex; align-items: center; justify-content: space-between; gap: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    `;
-    const emailShort = googleUserEmail ? `(${googleUserEmail.split('@')[0]})` : '';
-    banner.innerHTML = `
-        <span style="font-size:13px;">☁️ Απαιτείται επανασύνδεση ${emailShort}</span>
-        <button onclick="quickReconnect()" style="
-            background: white; color: #E65100; border: none; border-radius: 20px;
-            padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer;
-            white-space: nowrap;">
-            Σύνδεση
-        </button>
-    `;
-    document.body.appendChild(banner);
-}
-
-function hideReconnectBanner() {
-    const b = document.getElementById('reconnectBanner');
-    if (b) b.remove();
-}
-
-function quickReconnect() {
-    if (!tokenClient) return;
-    // Χρησιμοποιούμε login_hint για να προεπιλέξει τον σωστό λογαριασμό
-    const hint = localStorage.getItem('googleUserEmail') || '';
-    tokenClient.requestAccessToken({ prompt: '', login_hint: hint });
-    setTimeout(() => {
-        if (!googleAccessToken) {
-            tokenClient.requestAccessToken({ prompt: 'select_account', login_hint: hint });
-        }
-    }, 2000);
-}
-
-function silentTokenRefresh() {
-    if (!tokenClient) return;
-    tokenClient.requestAccessToken({ prompt: '' });
-}
-
-function scheduleTokenRefresh(expiresIn) {
-    clearTimeout(tokenRefreshTimer);
-    // Ανανέωση 5 λεπτά πριν λήξει (expiresIn σε δευτερόλεπτα)
-    const refreshIn = Math.max((expiresIn - 300) * 1000, 60000);
-    tokenRefreshTimer = setTimeout(() => silentTokenRefresh(), refreshIn);
 }
 
 function handleGoogleAuth() {
     if (googleAccessToken) {
+        // Είναι ήδη συνδεδεμένος — show menu
         showGoogleSyncMenu();
     } else {
+        // Σύνδεση
         startGoogleLogin();
     }
 }
 
 function startGoogleLogin() {
-    if (!tokenClient) {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: DRIVE_SCOPE,
-            callback: (response) => {
-                if (response.error) {
-                    showSyncToast('❌ Σφάλμα σύνδεσης: ' + response.error, 'error');
-                    return;
-                }
-                googleAccessToken = response.access_token;
-                const expiry = Date.now() + (response.expires_in * 1000);
-                localStorage.setItem('googleAccessToken', googleAccessToken);
-                localStorage.setItem('googleTokenExpiry', expiry.toString());
-                localStorage.setItem('googleWasConnected', '1');
-                fetchGoogleUserInfo();
-                updateGoogleAuthUI(true);
-                showSyncToast('✅ Συνδέθηκες με Google!', 'success');
-                scheduleTokenRefresh(response.expires_in);
-                setTimeout(() => syncFromDrive(), 500);
+    const client = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        callback: (response) => {
+            if (response.error) {
+                showSyncToast('❌ Σφάλμα σύνδεσης: ' + response.error, 'error');
+                return;
             }
-        });
-    }
-    tokenClient.requestAccessToken({ prompt: 'consent', login_hint: localStorage.getItem('googleUserEmail') || '' });
+            googleAccessToken = response.access_token;
+            // Token ισχύει για 1 ώρα
+            const expiry = Date.now() + (response.expires_in * 1000);
+            localStorage.setItem('googleAccessToken', googleAccessToken);
+            localStorage.setItem('googleTokenExpiry', expiry.toString());
+            
+            // Λήψη email χρήστη
+            fetchGoogleUserInfo();
+            updateGoogleAuthUI(true);
+            showSyncToast('✅ Συνδέθηκες με Google!', 'success');
+            // Αρχικός συγχρονισμός
+            setTimeout(() => syncFromDrive(), 500);
+        }
+    });
+    client.requestAccessToken();
 }
 
 async function fetchGoogleUserInfo() {
@@ -9171,7 +9398,6 @@ async function downloadDriveFile(fileId) {
 }
 
 function googleSignOut() {
-    clearTimeout(tokenRefreshTimer);
     if (googleAccessToken) {
         google.accounts.oauth2.revoke(googleAccessToken, () => {});
     }
@@ -9182,7 +9408,6 @@ function googleSignOut() {
     localStorage.removeItem('googleUserEmail');
     localStorage.removeItem('driveFileId');
     localStorage.removeItem('googleTokenExpiry');
-    localStorage.removeItem('googleWasConnected');
     updateGoogleAuthUI(false);
     showSyncToast('👋 Αποσυνδέθηκες από Google', 'info');
 }
@@ -9197,11 +9422,11 @@ function showSyncToast(message, type) {
     const toast = document.createElement('div');
     toast.id = 'syncToast';
     toast.style.cssText = `
-        position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
         background: ${colors[type] || '#333'}; color: white; padding: 10px 18px;
         border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 99999;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3); white-space: nowrap;
-        animation: fadeInDown 0.3s ease;
+        animation: fadeInUp 0.3s ease;
     `;
     toast.textContent = message;
     document.body.appendChild(toast);
@@ -9226,11 +9451,73 @@ window.addEventListener('load', () => {
 </script>
 
 <style>
-@keyframes fadeInDown {
-    from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 </style>
+
+<!-- Credit Popup -->
+<div class="credit-popup-overlay" id="creditPopupOverlay">
+    <div class="credit-popup">
+        <div class="credit-popup-header">
+            <div class="credit-popup-header-icon">💰</div>
+            <div class="credit-popup-header-text">
+                <strong id="creditPopupCustomerName">Πελάτης</strong>
+                <small>Διαθέσιμο υπόλοιπο από προηγούμενη αγορά</small>
+            </div>
+        </div>
+        <div class="credit-popup-body">
+            <div class="credit-popup-amount" id="creditPopupAmount">2.50€</div>
+            <div class="credit-popup-sublabel">διαθέσιμο credit</div>
+            <div class="credit-popup-toggle-row">
+                <span class="credit-popup-toggle-label">Χρήση στην τρέχουσα πώληση</span>
+                <label class="slide-toggle" style="margin:0;">
+                    <input type="checkbox" id="creditPopupToggle" onchange="onCreditPopupToggleChange()">
+                    <span class="slide-toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        <div class="credit-popup-footer">
+            <button class="credit-popup-confirm-btn" onclick="confirmCreditPopup()">Επιβεβαίωση</button>
+        </div>
+    </div>
+</div>
+
+<!-- Gave More Popup -->
+<div class="credit-popup-overlay" id="gaveMorePopupOverlay">
+    <div class="credit-popup">
+        <div class="credit-popup-header" style="background:linear-gradient(135deg,#1565C0,#0D47A1);">
+            <div class="credit-popup-header-icon">💰</div>
+            <div class="credit-popup-header-text">
+                <strong>Έδωσε παραπάνω;</strong>
+                <small>Το υπόλοιπο θα αποθηκευτεί ως credit</small>
+            </div>
+        </div>
+        <div class="credit-popup-body">
+            <div style="font-size:13px; color:#aaa; margin-bottom:6px;">Αξία πώλησης</div>
+            <div class="credit-popup-amount" id="gaveMoreSaleAmount" style="color:#2196F3; font-size:26px;">37.50€</div>
+            <div style="margin:18px 0 8px; font-size:14px; font-weight:600; text-align:left;">Ποσό που έδωσε (€)</div>
+            <input type="number" id="gaveMoreInput" placeholder="π.χ. 40" step="0.5" min="0"
+                   oninput="updateGaveMorePreview()"
+                   style="font-size:22px; text-align:center; padding:10px; border-radius:10px;
+                          background:var(--input-bg); border:1px solid var(--border-color);
+                          color:var(--text-color); width:100%; margin-bottom:12px;">
+            <div id="gaveMorePreview" style="font-size:13px; color:#aaa; min-height:20px;"></div>
+        </div>
+        <div class="credit-popup-footer" style="display:flex; gap:10px;">
+            <button onclick="cancelGaveMorePopup()"
+                    style="flex:1; padding:12px; border:none; border-radius:10px;
+                           background:var(--hover-bg); color:var(--text-color); font-size:14px; cursor:pointer;">
+                Άκυρο
+            </button>
+            <button class="credit-popup-confirm-btn" style="flex:1; background:#2196F3;"
+                    onclick="confirmGaveMorePopup()">
+                Αποθήκευση
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>
