@@ -3737,8 +3737,8 @@
                 <div onclick="onGaveMoreToggleBox()" id="gaveMoreToggleBox"
                      style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:8px;
                             padding:3px 14px; border-radius:10px; background:var(--input-bg);
-                            border:1px solid var(--border-color); cursor:pointer;
-                            transition: all 0.2s; user-select:none;">
+                            border:1px solid var(--border-color); cursor:not-allowed; opacity:0.35;
+                            transition: all 0.2s; user-select:none;" data-enabled="false">
                     <i class="fas fa-coins" style="font-size:15px; color:var(--text-color); opacity:0.8;"></i>
                     <label class="slide-toggle" style="margin:0; pointer-events:none;">
                         <input type="checkbox" id="saleGaveMoreToggle">
@@ -4832,14 +4832,31 @@
         // ===== GAVE MORE SYSTEM =====
         let saleGaveMoreAmount = 0; // ποσό που έδωσε ο πελάτης (αν > τιμή → credit)
 
-        function onGaveMoreToggleBox() {
-            const toggle = document.getElementById('saleGaveMoreToggle');
+        function setGaveMoreBoxEnabled(enabled) {
             const box = document.getElementById('gaveMoreToggleBox');
+            if (!box) return;
+            box.dataset.enabled = enabled ? 'true' : 'false';
+            box.style.cursor = enabled ? 'pointer' : 'not-allowed';
+            box.style.opacity = enabled ? '1' : '0.35';
+            if (!enabled) {
+                // Καθαρισμός χωρίς αναδρομή
+                saleGaveMoreAmount = 0;
+                const t = document.getElementById('saleGaveMoreToggle');
+                if (t) t.checked = false;
+                const overlay = document.getElementById('gaveMorePopupOverlay');
+                if (overlay) overlay.classList.remove('visible');
+                box.style.borderColor = '';
+                box.style.background = '';
+            }
+        }
+
+        function onGaveMoreToggleBox() {
+            const box = document.getElementById('gaveMoreToggleBox');
+            if (box.dataset.enabled !== 'true') return; // disabled
+            const toggle = document.getElementById('saleGaveMoreToggle');
             if (toggle.checked) {
-                // Απενεργοποίηση
                 resetGaveMore();
             } else {
-                // Ενεργοποίηση
                 toggle.checked = true;
                 openGaveMorePopup();
             }
@@ -4905,7 +4922,10 @@
             const overlay = document.getElementById('gaveMorePopupOverlay');
             if (overlay) overlay.classList.remove('visible');
             const box = document.getElementById('gaveMoreToggleBox');
-            if (box) { box.style.borderColor = ''; box.style.background = ''; }
+            if (box) {
+                box.style.borderColor = '';
+                box.style.background = '';
+            }
         }
 
         function addCreditToCustomer(custId, amount) {
@@ -7897,6 +7917,8 @@ function importData(event) {
                     document.getElementById('salePaymentPaid').checked = false;
                     document.getElementById('editTransactionPaymentPending').checked = true;
                     document.getElementById('editTransactionPaymentPaid').checked = false;
+                    // Απενεργοποίηση 💰 toggle
+                    setGaveMoreBoxEnabled(false);
                 } else if (value === 'paid') {
                     document.getElementById('purchasePaymentPending').checked = false;
                     document.getElementById('purchasePaymentPaid').checked = true;
@@ -7904,6 +7926,8 @@ function importData(event) {
                     document.getElementById('salePaymentPaid').checked = true;
                     document.getElementById('editTransactionPaymentPending').checked = false;
                     document.getElementById('editTransactionPaymentPaid').checked = true;
+                    // Ενεργοποίηση 💰 toggle
+                    setGaveMoreBoxEnabled(true);
                 }
             }
             
@@ -8291,8 +8315,6 @@ function confirmPayAll() {
                 priceHistory: JSON.parse(JSON.stringify(priceHistory))
             }
         });
-    }
-
     }
 }
 
