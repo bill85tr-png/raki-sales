@@ -3727,7 +3727,7 @@
                 </div>
             </div>
             <div style="display:flex; align-items:stretch; gap:10px; margin:10px 0;">
-                <div class="price-display" style="margin:0; flex:1; padding:4px 14px; border-radius:10px; background:var(--input-bg); border:1px solid var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;">
+                <div class="price-display" style="margin:0; flex:1; padding:3px 14px; border-radius:10px; background:var(--input-bg); border:1px solid var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;">
                     <span style="opacity:0.65; font-size:11px;">Τιμή πώλησης</span>
                     <span style="display:flex; align-items:baseline; gap:5px;">
                         <span id="salePriceDisplay" style="font-weight:700; font-size:16px;">7.50€</span>
@@ -3736,7 +3736,7 @@
                 </div>
                 <div onclick="onGaveMoreToggleBox()" id="gaveMoreToggleBox"
                      style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:8px;
-                            padding:4px 14px; border-radius:10px; background:var(--input-bg);
+                            padding:3px 14px; border-radius:10px; background:var(--input-bg);
                             border:1px solid var(--border-color); cursor:pointer;
                             transition: all 0.2s; user-select:none;">
                     <i class="fas fa-coins" style="font-size:15px; color:var(--text-color); opacity:0.8;"></i>
@@ -5830,6 +5830,10 @@ if (filteredCustomers.length === 0) {
                             ${stats.pendingMoney > 0
                                 ? `<span style="font-size:13px; font-weight:bold; color:#ff9800; white-space:nowrap;">${stats.pendingMoney.toFixed(2)}€</span>`
                                 : `<span style="font-size:12px; color:#4CAF50; white-space:nowrap;"><i class="fas fa-check-circle"></i></span>`
+                            }
+                            ${customer.credit > 0
+                                ? `<span style="font-size:13px; font-weight:bold; color:#4CAF50; white-space:nowrap;">+${parseFloat(customer.credit).toFixed(2)}€</span>`
+                                : ''
                             }
                             <div class="customer-arrow"><i class="fas fa-chevron-down"></i></div>
                         </div>
