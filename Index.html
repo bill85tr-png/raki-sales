@@ -4989,7 +4989,7 @@
             });
             
             // Αυτόματη εξαγωγή JSON μετά από καταχώρηση παραλαβής
-            exportJSONNow();
+
         }
 
         // Πωλήσεις - ΔΙΟΡΘΩΜΕΝΗ ΣΥΝΑΡΤΗΣΗ με σωστό έλεγχο αποθέματος
@@ -5136,7 +5136,7 @@
             });
             
             // Αυτόματη εξαγωγή JSON μετά από καταχώρηση πώλησης
-            exportJSONNow();
+
         }
 
         // Μεταφορά αποθέματος
@@ -5228,7 +5228,7 @@
                         oldPayment: oldPayment,
                         newPayment: 'paid'
                     });
-                    exportJSONNow();
+
                 }
             }
         }
@@ -5250,7 +5250,7 @@
                         newPayment: 'paid'
                     });
                     // Αυτόματη εξαγωγή JSON μετά από εξόφληση παραλαβής
-                    exportJSONNow();
+
                 }
             }
         }
@@ -5281,7 +5281,7 @@
                     oldSalesState: oldSalesState,
                     newSalesState: JSON.parse(JSON.stringify(sales))
                 });
-                exportJSONNow();
+
             }
         }
 
@@ -5307,7 +5307,7 @@
                     newPurchasesState: JSON.parse(JSON.stringify(purchases))
                 });
                     // Αυτόματη εξαγωγή JSON μετά από εξόφληση όλων των παραλαβών
-                    exportJSONNow();
+
             }
         }
 
@@ -5336,7 +5336,7 @@
                     oldSalesState: oldSalesState,
                     newSalesState: JSON.parse(JSON.stringify(sales))
                 });
-                exportJSONNow();
+
             }
         }
 
@@ -7931,37 +7931,6 @@ function importData(event) {
         }
 
         // Νέα συνάρτηση για αυτόματη εξαγωγή JSON μετά από καταχώρηση
-        function exportJSONNow() {
-            try {
-                const data = {
-                    customers,
-                    stock,
-                    sales,
-                    purchases,
-                    priceHistory,
-                    exportDate: new Date().toISOString(),
-                    version: '3.4',
-                    type: 'auto_after_transaction'
-                };
-
-                const dataStr = JSON.stringify(data, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(dataBlob);
-                const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
-                link.download = `raki-sales-auto-backup-${timestamp}.json`;
-
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                console.log('Αυτόματη εξαγωγή JSON ολοκληρώθηκε.');
-            } catch (error) {
-                console.error('Σφάλμα κατά την αυτόματη εξαγωγή:', error);
-            }
-        }
-
         // Keyboard shortcuts για undo/redo
         function setupKeyboardShortcuts() {
             document.addEventListener('keydown', (e) => {
@@ -8214,7 +8183,7 @@ function confirmPartialPayment(){
         newSalesState: JSON.parse(JSON.stringify(sales))
     });
 
-    if (typeof exportJSONNow === 'function') exportJSONNow();
+    
 }
 
 
@@ -8324,9 +8293,6 @@ function confirmPayAll() {
         });
     }
 
-    // ===== AUTO JSON EXPORT =====
-    if (typeof exportJSONNow === "function") {
-        setTimeout(() => { exportJSONNow(); }, 100);
     }
 }
 
