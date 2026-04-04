@@ -1652,12 +1652,10 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
             transition: all 0.3s ease;
             width: 30px;
             height: 30px;
+            flex-shrink: 0;
         }
 
         .edit-icon-btn:hover {
@@ -2689,8 +2687,6 @@
             .edit-icon-btn {
                 width: 28px;
                 height: 28px;
-                bottom: 8px;
-                right: 8px;
             }
 
             .pay-now-btn-compact,
@@ -3306,19 +3302,23 @@
                     </div>
                 </div>
 
-                <!-- Επεξεργασία Δεδομένων -->
+                <!-- Απόθεμα & Μεταφορά -->
                 <div class="settings-section">
                     <div class="settings-section-header" onclick="toggleSettingsSection(this)">
                         <div class="settings-section-title">
-                            <div class="settings-section-icon"><i class="fas fa-edit"></i></div>
-                            <div>Επεξεργασία Δεδομένων</div>
+                            <div class="settings-section-icon"><i class="fas fa-boxes"></i></div>
+                            <div>Απόθεμα</div>
                         </div>
                         <div class="settings-section-arrow"><i class="fas fa-chevron-down"></i></div>
                     </div>
                     <div class="settings-section-content">
                         <div class="settings-item">
-                            <div class="settings-label">Επεξεργασία καταχωρήσεων:</div>
-                            <button class="backup-btn" onclick="showEditDataModal()"><i class="fas fa-edit"></i> Επεξεργασία Δεδομένων</button>
+                            <div class="settings-label">Επεξεργασία αποθέματος:</div>
+                            <button class="backup-btn" onclick="showEditDataModal()"><i class="fas fa-boxes"></i> Επεξεργασία Αποθέματος</button>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-label">Μεταφορά αποθέματος:</div>
+                            <button class="transfer-btn" onclick="showModal('transferModal'); hideSettingsSlideMenu()"><i class="fas fa-exchange-alt"></i> Μεταφορά Αποθέματος</button>
                         </div>
                     </div>
                 </div>
@@ -3333,10 +3333,6 @@
                         <div class="settings-section-arrow"><i class="fas fa-chevron-down"></i></div>
                     </div>
                     <div class="settings-section-content">
-                        <div class="settings-item">
-                            <div class="settings-label">Μεταφορά αποθέματος:</div>
-                            <button class="transfer-btn" onclick="showModal('transferModal'); hideSettingsSlideMenu()"><i class="fas fa-exchange-alt"></i> Μεταφορά Αποθέματος</button>
-                        </div>
                         <div class="settings-item">
                             <div class="settings-label">Επαναφορά προεπιλογών:</div>
                             <button class="backup-btn" onclick="resetToDefaults()"><i class="fas fa-undo"></i> Επαναφορά Προεπιλεγμένων Τιμών</button>
@@ -3390,72 +3386,19 @@
         </div>
     </div>
 
-    <!-- Υπόλοιπα modals παραμένουν ως έχουν -->
     <div class="modal" id="editDataModal" style="display:none; justify-content:center; align-items:center;">
         <div class="modal-content" style="max-width:500px; padding:0; overflow:hidden; width:95%;">
             <div style="background:linear-gradient(135deg,#607D8B,#263238); padding:18px 20px; display:flex; align-items:center; gap:12px;">
                 <div style="background:rgba(255,255,255,0.2); border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <i class="fas fa-edit" style="font-size:18px; color:white;"></i>
+                    <i class="fas fa-boxes" style="font-size:18px; color:white;"></i>
                 </div>
                 <div style="flex:1;">
-                    <div style="font-size:17px; font-weight:700; color:white;">Επεξεργασία Δεδομένων</div>
-                    <div style="font-size:12px; color:rgba(255,255,255,0.75); margin-top:2px;">Διαχείριση εγγραφών</div>
+                    <div style="font-size:17px; font-weight:700; color:white;">Επεξεργασία Αποθέματος</div>
+                    <div style="font-size:12px; color:rgba(255,255,255,0.75); margin-top:2px;">Σπίτι & Δουλειά</div>
                 </div>
             </div>
             <div style="padding:18px 20px; max-height:70vh; overflow-y:auto;">
-            
-            <!-- ΝΕΑ ΔΙΑΤΑΞΗ: Κουμπιά Κατηγοριών όπως τα κουμπιά μπουκαλιών -->
-            <div style="display:flex !important; flex-direction:row !important; flex-wrap:nowrap !important; gap:8px; margin:15px 0;">
-                <button class="edit-category-btn active" onclick="setEditCategory('customers', this)"
-                        style="flex:1; width:auto !important; min-width:0; margin:0; padding:10px 4px;">
-                    <div class="edit-category-icon"><i class="fas fa-users"></i></div>
-                    <div class="edit-category-text">Πελάτες</div>
-                    <div class="edit-data-hint">${customers.length} εγγραφές</div>
-                </button>
-                <button class="edit-category-btn" onclick="setEditCategory('sales', this)"
-                        style="flex:1; width:auto !important; min-width:0; margin:0; padding:10px 4px;">
-                    <div class="edit-category-icon"><i class="fas fa-shopping-cart"></i></div>
-                    <div class="edit-category-text">Πωλήσεις</div>
-                    <div class="edit-data-hint">${sales.length} εγγραφές</div>
-                </button>
-                <button class="edit-category-btn" onclick="setEditCategory('purchases', this)"
-                        style="flex:1; width:auto !important; min-width:0; margin:0; padding:10px 4px;">
-                    <div class="edit-category-icon"><i class="fas fa-truck-loading"></i></div>
-                    <div class="edit-category-text">Παραλαβές</div>
-                    <div class="edit-data-hint">${purchases.length} εγγραφές</div>
-                </button>
-                <button class="edit-category-btn" onclick="setEditCategory('stock', this)"
-                        style="flex:1; width:auto !important; min-width:0; margin:0; padding:10px 4px;">
-                    <div class="edit-category-icon"><i class="fas fa-boxes"></i></div>
-                    <div class="edit-category-text">Απόθεμα</div>
-                    <div class="edit-data-hint">2 τοποθεσίες</div>
-                </button>
-            </div>
-            
-            <!-- ΝΕΟ: Ταξινόμηση αποτελεσμάτων -->
-            <div class="edit-sort-container">
-                <div class="edit-sort-label">Ταξινόμηση:</div>
-                <div class="edit-sort-dropdown">
-                    <button class="edit-sort-btn" onclick="toggleEditSortDropdown()">
-                        <span id="editSortText">Νεότερο πρώτα</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div id="editSortDropdown" class="edit-sort-dropdown-content">
-                        <a onclick="setEditSort('newest')" class="active">Νεότερο πρώτα</a>
-                        <a onclick="setEditSort('oldest')">Παλαιότερο πρώτα</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Πληροφορίες κατηγορίας -->
-            <div class="edit-results-count" id="editResultsCount">
-                <!-- Εδώ θα εμφανίζεται ο αριθμός εγγραφών -->
-            </div>
-            
-            <div class="edit-data-container" id="editDataContainer">
-                <!-- Τα δεδομένα θα εμφανίζονται εδώ δυναμικά -->
-            </div>
-            
+            <div class="edit-data-container" id="editDataContainer"></div>
             </div>
             <div style="padding:12px 20px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
                 <button onclick="hideModal('editDataModal')" style="flex:1; margin:0; padding:11px; background:#555;">Κλείσιμο</button>
@@ -3555,9 +3498,40 @@
                     </label>
                 </div>
             </div>
-            
+
+            <!-- Δώρο (μόνο για πωλήσεις) -->
+            <div id="editTxGiftRow" style="display:none;">
+                <div class="toggle-group-divider"></div>
+                <div class="slide-toggle-container" style="margin:4px 0;"
+                     id="editTxPaymentGroup">
+                    <div class="slide-toggle-label">
+                        <div class="slide-toggle-icon"><i class="fas fa-gift"></i></div>
+                        <div class="toggle-explanation">Δώρο</div>
+                    </div>
+                    <label class="slide-toggle">
+                        <input type="checkbox" id="editTransactionGift" onchange="handleEditTxGiftToggle()">
+                        <span class="slide-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 💰 Έδωσε παραπάνω (μόνο για πωλήσεις) -->
+            <div id="editTxGaveMoreRow"
+                 style="display:none; align-items:center; gap:8px; margin:8px 0;
+                        padding:8px 12px; border-radius:10px; background:var(--input-bg);
+                        border:1px solid var(--border-color);">
+                <i class="fas fa-coins" style="font-size:14px; opacity:0.8;"></i>
+                <span style="font-size:13px; flex:1;">Έδωσε παραπάνω (€)</span>
+                <input type="number" id="editTransactionGaveMore"
+                       placeholder="π.χ. 40" step="0.5" min="0"
+                       style="width:90px; padding:5px 8px; border-radius:8px;
+                              background:var(--card-bg); border:1px solid var(--border-color);
+                              color:var(--text-color); font-size:13px; text-align:right; margin:0;">
+            </div>
+
             </div>
             <div style="padding:12px 20px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
+                <button onclick="deleteCurrentTransaction()" style="flex:1; margin:0; padding:11px; background:#c62828;"><i class="fas fa-trash"></i> Διαγραφή</button>
                 <button onclick="saveTransactionEdit()" style="flex:1; margin:0; padding:11px; background:#5C6BC0;"><i class="fas fa-save"></i> Αποθήκευση</button>
                 <button class="close-btn" onclick="hideModal('editTransactionModal')" style="flex:1; margin:0; padding:11px;">Άκυρο</button>
             </div>
@@ -3876,7 +3850,7 @@
         let customersSort = 'alphabetical';
 
         // Νέα μεταβλητές για Επεξεργασία Δεδομένων
-        let editDataCategory = 'customers';
+        let editDataCategory = 'stock';
         let editDataSort = 'newest'; // Προεπιλογή: Νεότερο πρώτα
 
         // Theme Management
@@ -5626,14 +5600,17 @@ if (filteredSales.length === 0) {
                     ` : ''}
                 `;
                 
-                // Προσθήκη κουμπιού επεξεργασίας (μόνο εικονίδιο)
+                // Κουμπιά επεξεργασίας + διαγραφής
                 const editButton = document.createElement('button');
                 editButton.className = 'edit-icon-btn';
                 editButton.innerHTML = '<i class="fas fa-edit"></i>';
-                editButton.onclick = function() { 
-                    editTransaction(sale.id, 'sale'); 
-                };
-                transactionDiv.appendChild(editButton);
+                editButton.title = 'Επεξεργασία';
+                editButton.onclick = function() { editTransaction(sale.id, 'sale'); };
+
+                const btnWrapper = document.createElement('div');
+                btnWrapper.style.cssText = 'position:absolute; bottom:8px; right:6px; display:flex; flex-direction:row; gap:2px; align-items:center;';
+                btnWrapper.appendChild(editButton);
+                transactionDiv.appendChild(btnWrapper);
                 
                 container.appendChild(transactionDiv);
             });
@@ -5756,14 +5733,17 @@ if (filteredPurchases.length === 0) {
                     ` : ''}
                 `;
                 
-                // Προσθήκη κουμπιού επεξεργασίας (μόνο εικονίδιο)
+                // Κουμπιά επεξεργασίας + διαγραφής
                 const editButton = document.createElement('button');
                 editButton.className = 'edit-icon-btn';
                 editButton.innerHTML = '<i class="fas fa-edit"></i>';
-                editButton.onclick = function() { 
-                    editTransaction(purchase.id, 'purchase'); 
-                };
-                transactionDiv.appendChild(editButton);
+                editButton.title = 'Επεξεργασία';
+                editButton.onclick = function() { editTransaction(purchase.id, 'purchase'); };
+
+                const btnWrapper = document.createElement('div');
+                btnWrapper.style.cssText = 'position:absolute; bottom:8px; right:6px; display:flex; flex-direction:row; gap:2px; align-items:center;';
+                btnWrapper.appendChild(editButton);
+                transactionDiv.appendChild(btnWrapper);
                 
                 container.appendChild(transactionDiv);
             });
@@ -5933,6 +5913,7 @@ if (filteredCustomers.length === 0) {
                 // Wrapper — κρυμμένο αρχικά, εμφανίζεται όταν ανοίξει η κάρτα
                 const btnWrapper = document.createElement('div');
                 btnWrapper.style.cssText = 'display:none; position:absolute; bottom:10px; right:10px; flex-direction:row; gap:4px; align-items:center;';
+
                 btnWrapper.appendChild(exportButton);
                 btnWrapper.appendChild(editButton);
 
@@ -6140,8 +6121,62 @@ if (filteredCustomers.length === 0) {
                 document.getElementById('editTransactionLocationWork').checked = transaction.location === 'work';
                 document.getElementById('editTransactionPaymentPending').checked = transaction.payment === 'pending';
                 document.getElementById('editTransactionPaymentPaid').checked = transaction.payment === 'paid';
-                
+
+                // Sale-only fields
+                const isSale = type === 'sale';
+                document.getElementById('editTxGiftRow').style.display = isSale ? 'block' : 'none';
+                document.getElementById('editTxGaveMoreRow').style.display = isSale ? 'flex' : 'none';
+
+                if (isSale) {
+                    const isGift = !!transaction.gift;
+                    document.getElementById('editTransactionGift').checked = isGift;
+                    document.getElementById('editTransactionGaveMore').value = '';
+
+                    // Disable payment group if gift
+                    const payGroup = document.querySelector('#editTransactionModal .toggle-group:last-of-type');
+                    if (payGroup) {
+                        payGroup.style.opacity = isGift ? '0.35' : '1';
+                        payGroup.style.pointerEvents = isGift ? 'none' : '';
+                    }
+                    // Disable gave-more if not paid
+                    const isPaid = transaction.payment === 'paid' && !isGift;
+                    document.getElementById('editTxGaveMoreRow').style.opacity = isPaid ? '1' : '0.35';
+                    document.getElementById('editTxGaveMoreRow').style.pointerEvents = isPaid ? '' : 'none';
+                }
+
                 showModal('editTransactionModal');
+            }
+        }
+
+        function deleteCurrentTransaction() {
+            const id = parseInt(document.getElementById('editTransactionId').value);
+            const type = document.getElementById('editTransactionType').value;
+            hideModal('editTransactionModal');
+            if (type === 'sale') {
+                removeSale(id);
+            } else {
+                removePurchase(id);
+            }
+        }
+
+        function handleEditTxGiftToggle() {
+            const isGift = document.getElementById('editTransactionGift').checked;
+            const payGroup = document.querySelector('#editTransactionModal .toggle-group:last-of-type');
+            const gaveMoreRow = document.getElementById('editTxGaveMoreRow');
+            const pendingCb = document.getElementById('editTransactionPaymentPending');
+            const paidCb = document.getElementById('editTransactionPaymentPaid');
+
+            if (isGift) {
+                if (payGroup) { payGroup.style.opacity = '0.35'; payGroup.style.pointerEvents = 'none'; }
+                if (pendingCb) pendingCb.checked = false;
+                if (paidCb) paidCb.checked = true;
+                gaveMoreRow.style.opacity = '0.35';
+                gaveMoreRow.style.pointerEvents = 'none';
+            } else {
+                if (payGroup) { payGroup.style.opacity = '1'; payGroup.style.pointerEvents = ''; }
+                const isPaid = paidCb && paidCb.checked;
+                gaveMoreRow.style.opacity = isPaid ? '1' : '0.35';
+                gaveMoreRow.style.pointerEvents = isPaid ? '' : 'none';
             }
         }
 
@@ -6163,7 +6198,9 @@ if (filteredCustomers.length === 0) {
             const paymentPaid = document.getElementById('editTransactionPaymentPaid').checked;
             
             const location = locationHome ? 'home' : 'work';
-            const payment = paymentPending ? 'pending' : 'paid';
+            const isGift = type === 'sale' && document.getElementById('editTransactionGift')?.checked;
+            const payment = isGift ? 'paid' : (paymentPending ? 'pending' : 'paid');
+            const gaveMoreVal = type === 'sale' ? (parseFloat(document.getElementById('editTransactionGaveMore')?.value) || 0) : 0;
             
             if (!validateNumber(quantity, 1)) {
                 alert('Η ποσότητα πρέπει να είναι τουλάχιστον 1');
@@ -6224,11 +6261,32 @@ if (filteredCustomers.length === 0) {
                     transaction.price = quantity * parseFloat(bottleType) * pricePerLiterForDate;
                 }
                 
-                // Recalculate total for sales
+                // Recalculate total for sales + handle gift/payment/credit
                 if (type === 'sale') {
                     const pricePerLiterForDate = getPricePerLiter(date);
-                    transaction.total = quantity * parseFloat(bottleType) * pricePerLiterForDate;
+                    transaction.gift = isGift;
+                    transaction.total = isGift ? 0 : quantity * parseFloat(bottleType) * pricePerLiterForDate;
                     transaction.price = pricePerLiterForDate;
+
+                    if (isGift) {
+                        transaction.payments = [{ amount: 0, date: new Date().toISOString() }];
+                        transaction.payment = 'paid';
+                        transaction.remainingAmount = 0;
+                    } else if (payment === 'paid') {
+                        transaction.payments = [{ amount: transaction.total, date: new Date().toISOString() }];
+                        transaction.payment = 'paid';
+                        transaction.remainingAmount = 0;
+                    } else {
+                        transaction.payments = [];
+                        transaction.payment = 'pending';
+                        transaction.remainingAmount = transaction.total;
+                    }
+
+                    // Credit αν έδωσε παραπάνω
+                    if (!isGift && payment === 'paid' && gaveMoreVal > 0) {
+                        const diff = parseFloat((gaveMoreVal - transaction.total).toFixed(2));
+                        if (diff > 0) addCreditToCustomer(transaction.customerId, diff);
+                    }
                 }
                 
                 transaction.timestamp = dateTime.getTime();
@@ -6254,30 +6312,47 @@ if (filteredCustomers.length === 0) {
         // Επεξεργασία πελάτη (όνομα, ψευδώνυμο, τηλέφωνο)
         function editCustomerData(customerId) {
             const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+
+            document.getElementById('editCustModalId').value = customerId;
+            document.getElementById('editCustModalName').value = customer.name || '';
+            document.getElementById('editCustModalNickname').value = customer.nickname || '';
+            document.getElementById('editCustModalPhone').value = customer.phone || '';
+            document.getElementById('editCustModalCredit').value = (customer.credit || 0).toFixed(2);
+            document.getElementById('editCustomerModal').style.display = 'flex';
+        }
+
+        function deleteCurrentCustomer() {
+            const customerId = parseInt(document.getElementById('editCustModalId').value);
+            document.getElementById('editCustomerModal').style.display = 'none';
+            removeCustomer(customerId);
+        }
+
+        function saveEditCustomerModal() {
+            const customerId = parseInt(document.getElementById('editCustModalId').value);
+            const name = document.getElementById('editCustModalName').value.trim();
+            const nickname = document.getElementById('editCustModalNickname').value.trim();
+            const phone = document.getElementById('editCustModalPhone').value.trim();
+            const credit = parseFloat(document.getElementById('editCustModalCredit').value) || 0;
+
+            if (!name) { alert('Συμπληρώστε όνομα'); return; }
+
+            const customer = customers.find(c => c.id === customerId);
             if (customer) {
-                const newName = prompt('Επεξεργασία ονόματος:', customer.name);
-                if (newName !== null && newName.trim() !== '') {
-                    const newNickname = prompt('Επεξεργασία ψευδωνύμου:', customer.nickname || '');
-                    const newPhone = prompt('Επεξεργασία τηλεφώνου:', customer.phone || '');
-                    
-                    const oldCustomer = JSON.parse(JSON.stringify(customer));
-                    
-                    customer.name = newName.trim();
-                    customer.nickname = newNickname ? newNickname.trim() : '';
-                    customer.phone = newPhone ? newPhone.trim() : '';
-                    
-                    saveData();
-                    updateAllDisplays();
-                    
-                    
-                    // Αποθήκευση στο history για undo/redo
-                    saveToHistory('edit_customer', {
-                        customerId: customerId,
-                        oldCustomer: oldCustomer,
-                        newCustomer: JSON.parse(JSON.stringify(customer))
-                    });
-                }
+                const oldCustomer = JSON.parse(JSON.stringify(customer));
+                customer.name = name;
+                customer.nickname = nickname;
+                customer.phone = phone;
+                customer.credit = parseFloat(credit.toFixed(2));
+                saveData();
+                updateAllDisplays();
+                saveToHistory('edit_customer', {
+                    customerId,
+                    oldCustomer,
+                    newCustomer: JSON.parse(JSON.stringify(customer))
+                });
             }
+            document.getElementById('editCustomerModal').style.display = 'none';
         }
 
         // Επαναφορά προεπιλεγμένων τιμών
@@ -7112,8 +7187,8 @@ if (filteredCustomers.length === 0) {
         // Επεξεργασία Δεδομένων
         function showEditDataModal() {
             hideSettingsSlideMenu();
+            editDataCategory = 'stock';
             showModal('editDataModal');
-            updateEditDataHints();
             loadEditData();
         }
 
@@ -8021,8 +8096,10 @@ function importData(event) {
                     document.getElementById('salePaymentPaid').checked = false;
                     document.getElementById('editTransactionPaymentPending').checked = true;
                     document.getElementById('editTransactionPaymentPaid').checked = false;
-                    // Απενεργοποίηση 💰 toggle
+                    // Απενεργοποίηση 💰 toggles
                     setGaveMoreBoxEnabled(false);
+                    const gtr = document.getElementById('editTxGaveMoreRow');
+                    if (gtr) { gtr.style.opacity = '0.35'; gtr.style.pointerEvents = 'none'; }
                 } else if (value === 'paid') {
                     document.getElementById('purchasePaymentPending').checked = false;
                     document.getElementById('purchasePaymentPaid').checked = true;
@@ -8030,8 +8107,11 @@ function importData(event) {
                     document.getElementById('salePaymentPaid').checked = true;
                     document.getElementById('editTransactionPaymentPending').checked = false;
                     document.getElementById('editTransactionPaymentPaid').checked = true;
-                    // Ενεργοποίηση 💰 toggle
+                    // Ενεργοποίηση 💰 toggles
                     setGaveMoreBoxEnabled(true);
+                    const gtr = document.getElementById('editTxGaveMoreRow');
+                    const isGift = document.getElementById('editTransactionGift')?.checked;
+                    if (gtr && !isGift) { gtr.style.opacity = '1'; gtr.style.pointerEvents = ''; }
                 }
             }
             
@@ -9615,6 +9695,49 @@ window.addEventListener('load', () => {
                     onclick="confirmGaveMorePopup()">
                 Αποθήκευση
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal" id="editCustomerModal" style="display:none; justify-content:center; align-items:center;">
+    <div class="modal-content" style="max-width:400px; padding:0; overflow:hidden; width:92%;">
+        <div style="background:linear-gradient(135deg,#1565C0,#0D47A1); padding:18px 20px; display:flex; align-items:center; gap:12px;">
+            <div style="background:rgba(255,255,255,0.2); border-radius:50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fas fa-user-edit" style="font-size:18px; color:white;"></i>
+            </div>
+            <div style="flex:1;">
+                <div style="font-size:17px; font-weight:700; color:white;">Επεξεργασία Πελάτη</div>
+                <div style="font-size:12px; color:rgba(255,255,255,0.75); margin-top:2px;">Στοιχεία & Credit</div>
+            </div>
+            <button onclick="document.getElementById('editCustomerModal').style.display='none'"
+                    style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="padding:18px 20px; max-height:70vh; overflow-y:auto;">
+            <input type="hidden" id="editCustModalId">
+            <input type="text" id="editCustModalName" placeholder="Ονοματεπώνυμο *" style="margin:6px 0;">
+            <input type="text" id="editCustModalNickname" placeholder="Ψευδώνυμο (προαιρετικό)" style="margin:6px 0;">
+            <input type="tel" id="editCustModalPhone" placeholder="Τηλέφωνο" style="margin:6px 0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-top:10px; background:var(--input-bg); border:1px solid #4CAF50; border-radius:10px; padding:10px 14px;">
+                <i class="fas fa-coins" style="color:#4CAF50; font-size:16px;"></i>
+                <span style="font-size:13px; color:#A5D6A7; flex:1;">Credit (€)</span>
+                <input type="number" id="editCustModalCredit" placeholder="0.00" step="0.01" min="0"
+                       style="width:90px; padding:5px 8px; border-radius:8px; background:var(--card-bg);
+                              border:1px solid var(--border-color); color:var(--text-color);
+                              font-size:14px; text-align:right; margin:0;">
+            </div>
+        </div>
+        <div style="padding:12px 20px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
+            <button onclick="deleteCurrentCustomer()" style="flex:1; margin:0; padding:11px; background:#c62828;">
+                <i class="fas fa-trash"></i> Διαγραφή
+            </button>
+            <button onclick="saveEditCustomerModal()" style="flex:1; margin:0; padding:11px; background:#1565C0;">
+                <i class="fas fa-save"></i> Αποθήκευση
+            </button>
+            <button onclick="document.getElementById('editCustomerModal').style.display='none'"
+                    style="flex:1; margin:0; padding:11px; background:#555;">Άκυρο</button>
         </div>
     </div>
 </div>
