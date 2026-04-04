@@ -3715,7 +3715,7 @@
             </div>
             <div class="toggle-group-divider"></div>
             <!-- Πληρωμή -->
-            <div class="toggle-group">
+            <div class="toggle-group" id="salePaymentGroup">
                 <div class="toggle-group-title">Κατάσταση Πληρωμής</div>
                 <div class="slide-toggle-container pending">
                     <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-clock"></i></div><div class="toggle-explanation">Εκκρεμείς Πληρωμή</div></div>
@@ -5017,16 +5017,34 @@
             const isGift = document.getElementById('saleIsGift').checked;
             const priceDisplay = document.getElementById('price-display-block');
             const paymentGroup = document.getElementById('salePaymentGroup');
+            const pendingToggle = document.getElementById('salePaymentPending');
+            const paidToggle = document.getElementById('salePaymentPaid');
 
             if (isGift) {
-                // Δώρο: κρύβουμε τιμή & πληρωμή, εμφανίζουμε 0€
                 if (priceDisplay) priceDisplay.style.opacity = '0.3';
-                if (paymentGroup) paymentGroup.style.opacity = '0.3';
+                if (paymentGroup) {
+                    paymentGroup.style.opacity = '0.35';
+                    paymentGroup.style.pointerEvents = 'none';
+                    paymentGroup.style.cursor = 'not-allowed';
+                }
+                if (pendingToggle) pendingToggle.disabled = true;
+                if (paidToggle) paidToggle.disabled = true;
                 document.getElementById('salePriceDisplay').textContent = '0.00€ 🎁';
+                // Απενεργοποίηση 💰 toggle επίσης
+                setGaveMoreBoxEnabled(false);
             } else {
                 if (priceDisplay) priceDisplay.style.opacity = '1';
-                if (paymentGroup) paymentGroup.style.opacity = '1';
+                if (paymentGroup) {
+                    paymentGroup.style.opacity = '1';
+                    paymentGroup.style.pointerEvents = '';
+                    paymentGroup.style.cursor = '';
+                }
+                if (pendingToggle) pendingToggle.disabled = false;
+                if (paidToggle) paidToggle.disabled = false;
                 calculateSalePrice();
+                // Επαναφορά 💰 toggle βάσει κατάστασης πληρωμής
+                const isPaid = paidToggle && paidToggle.checked;
+                setGaveMoreBoxEnabled(!!isPaid);
             }
         }
 
