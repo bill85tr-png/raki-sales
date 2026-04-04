@@ -7323,7 +7323,6 @@ function toggleEditSortDropdown() {
                             <input type="date" id="edit-sale-date-${sale.id}" value="${sale.date.split('/').reverse().join('-')}">
                             <input type="time" id="edit-sale-time-${sale.id}" value="${sale.time}">
                         </div>
-                        <!-- Νέο: Quantity Control με βέλα για επεξεργασία -->
                         <div class="quantity-control-container">
                             <button class="quantity-control-btn" onclick="decreaseEditQuantity('sale', ${sale.id})">
                                 <i class="fas fa-minus"></i>
@@ -7343,10 +7342,64 @@ function toggleEditSortDropdown() {
                             <option value="home" ${sale.location === 'home' ? 'selected' : ''}>Σπίτι</option>
                             <option value="work" ${sale.location === 'work' ? 'selected' : ''}>Δουλειά</option>
                         </select>
-                        <select id="edit-sale-payment-${sale.id}">
-                            <option value="pending" ${sale.payment === 'pending' ? 'selected' : ''}>Εκκρεμεί Πληρωμή</option>
-                            <option value="paid" ${sale.payment === 'paid' ? 'selected' : ''}>Πληρωμένο</option>
-                        </select>
+
+                        <!-- Δώρο toggle -->
+                        <div class="slide-toggle-container" style="margin:6px 0;"
+                             id="edit-sale-gift-row-${sale.id}">
+                            <div class="slide-toggle-label">
+                                <div class="slide-toggle-icon"><i class="fas fa-gift"></i></div>
+                                <div class="toggle-explanation">Δώρο</div>
+                            </div>
+                            <label class="slide-toggle" style="margin:0;">
+                                <input type="checkbox" id="edit-sale-gift-${sale.id}"
+                                       ${sale.gift ? 'checked' : ''}
+                                       onchange="handleEditSaleGiftToggle(${sale.id})">
+                                <span class="slide-toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <!-- Πληρωμή toggles -->
+                        <div id="edit-sale-payment-group-${sale.id}"
+                             style="${sale.gift ? 'opacity:0.35; pointer-events:none;' : ''}">
+                            <div class="slide-toggle-container pending" style="margin:4px 0;">
+                                <div class="slide-toggle-label">
+                                    <div class="slide-toggle-icon"><i class="fas fa-clock"></i></div>
+                                    <div class="toggle-explanation">Εκκρεμής Πληρωμή</div>
+                                </div>
+                                <label class="slide-toggle" style="margin:0;">
+                                    <input type="checkbox" id="edit-sale-payment-pending-${sale.id}"
+                                           ${sale.payment === 'pending' && !sale.gift ? 'checked' : ''}
+                                           onchange="handleEditPaymentToggle(${sale.id}, 'pending')">
+                                    <span class="slide-toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="slide-toggle-container paid" style="margin:4px 0;">
+                                <div class="slide-toggle-label">
+                                    <div class="slide-toggle-icon"><i class="fas fa-check-circle"></i></div>
+                                    <div class="toggle-explanation">Πληρωμένο</div>
+                                </div>
+                                <label class="slide-toggle" style="margin:0;">
+                                    <input type="checkbox" id="edit-sale-payment-paid-${sale.id}"
+                                           ${sale.payment === 'paid' || sale.gift ? 'checked' : ''}
+                                           onchange="handleEditPaymentToggle(${sale.id}, 'paid')">
+                                    <span class="slide-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 💰 Έδωσε παραπάνω -->
+                        <div id="edit-sale-gavermore-row-${sale.id}"
+                             style="display:flex; align-items:center; gap:8px; margin:6px 0;
+                                    ${(sale.payment !== 'paid' || sale.gift) ? 'opacity:0.35; pointer-events:none;' : ''}">
+                            <i class="fas fa-coins" style="font-size:13px; opacity:0.8;"></i>
+                            <span style="font-size:13px; flex:1;">Έδωσε παραπάνω (€)</span>
+                            <input type="number" id="edit-sale-gavermore-${sale.id}"
+                                   placeholder="π.χ. 40" step="0.5" min="0"
+                                   style="width:90px; padding:5px 8px; border-radius:8px;
+                                          background:var(--input-bg); border:1px solid var(--border-color);
+                                          color:var(--text-color); font-size:13px; text-align:right;">
+                        </div>
+
                         <div class="form-actions">
                             <button class="small-btn save-btn" onclick="saveSaleEdit(${sale.id})">Αποθήκευση</button>
                             <button class="small-btn cancel-btn" onclick="cancelEdit('edit-sale-${sale.id}')">Άκυρο</button>
@@ -7553,82 +7606,115 @@ function toggleEditSortDropdown() {
 
         function editSaleFull(saleId) {
             document.getElementById(`edit-sale-${saleId}`).style.display = 'block';
-            
+        }
+
+        function handleEditSaleGiftToggle(saleId) {
+            const isGift = document.getElementById(`edit-sale-gift-${saleId}`).checked;
+            const paymentGroup = document.getElementById(`edit-sale-payment-group-${saleId}`);
+            const gaveMoreRow = document.getElementById(`edit-sale-gavermore-row-${saleId}`);
+            const paidToggle = document.getElementById(`edit-sale-payment-paid-${saleId}`);
+            const pendingToggle = document.getElementById(`edit-sale-payment-pending-${saleId}`);
+
+            if (isGift) {
+                paymentGroup.style.opacity = '0.35';
+                paymentGroup.style.pointerEvents = 'none';
+                gaveMoreRow.style.opacity = '0.35';
+                gaveMoreRow.style.pointerEvents = 'none';
+                if (paidToggle) paidToggle.checked = true;
+                if (pendingToggle) pendingToggle.checked = false;
+            } else {
+                paymentGroup.style.opacity = '1';
+                paymentGroup.style.pointerEvents = '';
+                // Έλεγχος αν είναι paid για να ενεργοποιηθεί το 💰
+                const isPaid = paidToggle && paidToggle.checked;
+                gaveMoreRow.style.opacity = isPaid ? '1' : '0.35';
+                gaveMoreRow.style.pointerEvents = isPaid ? '' : 'none';
+            }
+        }
+
+        function handleEditPaymentToggle(saleId, value) {
+            const pendingToggle = document.getElementById(`edit-sale-payment-pending-${saleId}`);
+            const paidToggle = document.getElementById(`edit-sale-payment-paid-${saleId}`);
+            const gaveMoreRow = document.getElementById(`edit-sale-gavermore-row-${saleId}`);
+
+            if (value === 'pending') {
+                if (pendingToggle) pendingToggle.checked = true;
+                if (paidToggle) paidToggle.checked = false;
+                if (gaveMoreRow) { gaveMoreRow.style.opacity = '0.35'; gaveMoreRow.style.pointerEvents = 'none'; }
+            } else {
+                if (pendingToggle) pendingToggle.checked = false;
+                if (paidToggle) paidToggle.checked = true;
+                if (gaveMoreRow) { gaveMoreRow.style.opacity = '1'; gaveMoreRow.style.pointerEvents = ''; }
+            }
         }
 
         function saveSaleEdit(saleId) {
             const date = document.getElementById(`edit-sale-date-${saleId}`).value;
             const time = document.getElementById(`edit-sale-time-${saleId}`).value;
             const quantity = parseInt(document.getElementById(`edit-sale-quantity-${saleId}`).value);
-            
-            // Βρίσκουμε το επιλεγμένο κουμπί
+
             const selectedBtn = document.querySelector(`#edit-sale-${saleId} .bottle-buttons-container .bottle-btn.active`);
             const type = selectedBtn ? selectedBtn.dataset.type : '1.5';
-            
+
             const location = document.getElementById(`edit-sale-location-${saleId}`).value;
-            const payment = document.getElementById(`edit-sale-payment-${saleId}`).value;
-            
-            if (!validateNumber(quantity, 1)) {
-                alert('Η ποσότητα πρέπει να είναι τουλάχιστον 1');
-                return;
-            }
-            
-            if (!date || !time) {
-                alert('Συμπληρώστε ημερομηνία και ώρα');
-                return;
-            }
-            
+
+            // Νέα πεδία
+            const isGift = document.getElementById(`edit-sale-gift-${saleId}`)?.checked || false;
+            const isPaid = document.getElementById(`edit-sale-payment-paid-${saleId}`)?.checked || false;
+            const payment = isGift ? 'paid' : (isPaid ? 'paid' : 'pending');
+            const gaveMoreVal = parseFloat(document.getElementById(`edit-sale-gavermore-${saleId}`)?.value) || 0;
+
+            if (!validateNumber(quantity, 1)) { alert('Η ποσότητα πρέπει να είναι τουλάχιστον 1'); return; }
+            if (!date || !time) { alert('Συμπληρώστε ημερομηνία και ώρα'); return; }
+
             const sale = sales.find(s => s.id === saleId);
             if (sale) {
                 const oldSale = JSON.parse(JSON.stringify(sale));
                 const oldStock = JSON.parse(JSON.stringify(stock));
-                
-                // Πάντα επαναφέρουμε το παλιό stock και αφαιρούμε το νέο
-                // (ανεξάρτητα από αλλαγή ποσότητας, τύπου ή τοποθεσίας)
+
                 stock[sale.location][sale.type] += sale.quantity;
                 stock[location][type] -= quantity;
-                // Αποτρέπουμε αρνητικό απόθεμα
-                if (stock[location][type] < 0) {
-                    stock[location][type] = 0;
-                }
-                
+                if (stock[location][type] < 0) stock[location][type] = 0;
+
                 const dateTime = new Date(`${date}T${time}`);
-                const formattedDate = dateTime.toLocaleDateString('el-GR');
-                const formattedTime = dateTime.toLocaleTimeString('el-GR', {hour: '2-digit', minute: '2-digit'});
-                
-                sale.date = formattedDate;
-                sale.time = formattedTime;
+                sale.date = dateTime.toLocaleDateString('el-GR');
+                sale.time = dateTime.toLocaleTimeString('el-GR', {hour: '2-digit', minute: '2-digit'});
                 sale.quantity = quantity;
                 sale.type = type;
                 sale.location = location;
-                
-                // Υπολογισμός τιμής βάσει της ημερομηνίας
+                sale.gift = isGift;
+
                 const pricePerLiterForDate = getPricePerLiter(date);
-                sale.total = quantity * parseFloat(type) * pricePerLiterForDate;
+                sale.total = isGift ? 0 : quantity * parseFloat(type) * pricePerLiterForDate;
                 sale.price = pricePerLiterForDate;
-                
-                // Επαναφορά payments βάσει νέου payment status
-                if (payment === 'paid') {
-                    // Πλήρης εξόφληση: ένα payment record για το total
+
+                if (isGift) {
+                    sale.payments = [{ amount: 0, date: new Date().toISOString() }];
+                    sale.payment = 'paid';
+                    sale.remainingAmount = 0;
+                } else if (payment === 'paid') {
                     sale.payments = [{ amount: sale.total, date: new Date().toISOString() }];
                     sale.payment = 'paid';
                     sale.remainingAmount = 0;
                 } else {
-                    // Εκκρεμές: καθαρισμός payments
                     sale.payments = [];
                     sale.payment = 'pending';
                     sale.remainingAmount = sale.total;
                 }
-                
+
                 sale.timestamp = dateTime.getTime();
                 sale.dateTime = dateTime;
-                
+
+                // Έδωσε παραπάνω → credit
+                if (!isGift && payment === 'paid' && gaveMoreVal > 0) {
+                    const diff = parseFloat((gaveMoreVal - sale.total).toFixed(2));
+                    if (diff > 0) addCreditToCustomer(sale.customerId, diff);
+                }
+
                 saveData();
                 document.getElementById(`edit-sale-${saleId}`).style.display = 'none';
                 loadEditData();
-                
-                
-                // Αποθήκευση στο history για undo/redo
+
                 saveToHistory('edit_sale_full', {
                     saleId: saleId,
                     oldSale: oldSale,
