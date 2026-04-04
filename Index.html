@@ -6318,7 +6318,6 @@ if (filteredCustomers.length === 0) {
             document.getElementById('editCustModalName').value = customer.name || '';
             document.getElementById('editCustModalNickname').value = customer.nickname || '';
             document.getElementById('editCustModalPhone').value = customer.phone || '';
-            document.getElementById('editCustModalCredit').value = (customer.credit || 0).toFixed(2);
             document.getElementById('editCustomerModal').style.display = 'flex';
         }
 
@@ -6333,7 +6332,6 @@ if (filteredCustomers.length === 0) {
             const name = document.getElementById('editCustModalName').value.trim();
             const nickname = document.getElementById('editCustModalNickname').value.trim();
             const phone = document.getElementById('editCustModalPhone').value.trim();
-            const credit = parseFloat(document.getElementById('editCustModalCredit').value) || 0;
 
             if (!name) { alert('Συμπληρώστε όνομα'); return; }
 
@@ -6343,7 +6341,6 @@ if (filteredCustomers.length === 0) {
                 customer.name = name;
                 customer.nickname = nickname;
                 customer.phone = phone;
-                customer.credit = parseFloat(credit.toFixed(2));
                 saveData();
                 updateAllDisplays();
                 saveToHistory('edit_customer', {
@@ -9720,14 +9717,6 @@ window.addEventListener('load', () => {
             <input type="text" id="editCustModalName" placeholder="Ονοματεπώνυμο *" style="margin:6px 0;">
             <input type="text" id="editCustModalNickname" placeholder="Ψευδώνυμο (προαιρετικό)" style="margin:6px 0;">
             <input type="tel" id="editCustModalPhone" placeholder="Τηλέφωνο" style="margin:6px 0;">
-            <div style="display:flex; align-items:center; gap:8px; margin-top:10px; background:var(--input-bg); border:1px solid #4CAF50; border-radius:10px; padding:10px 14px;">
-                <i class="fas fa-coins" style="color:#4CAF50; font-size:16px;"></i>
-                <span style="font-size:13px; color:#A5D6A7; flex:1;">Credit (€)</span>
-                <input type="number" id="editCustModalCredit" placeholder="0.00" step="0.01" min="0"
-                       style="width:90px; padding:5px 8px; border-radius:8px; background:var(--card-bg);
-                              border:1px solid var(--border-color); color:var(--text-color);
-                              font-size:14px; text-align:right; margin:0;">
-            </div>
         </div>
         <div style="padding:12px 20px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
             <button onclick="deleteCurrentCustomer()" style="flex:1; margin:0; padding:11px; background:#c62828;">
