@@ -9322,19 +9322,49 @@ let isSyncing = false;
 
 // Αρχικοποίηση Google Auth
 function initGoogleAuth() {
-    // Ανάκτηση αποθηκευμένου token
     const savedToken = localStorage.getItem('googleAccessToken');
     const savedEmail = localStorage.getItem('googleUserEmail');
     const savedFileId = localStorage.getItem('driveFileId');
     const tokenExpiry = localStorage.getItem('googleTokenExpiry');
-    
+
     if (savedToken && tokenExpiry && Date.now() < parseInt(tokenExpiry)) {
+        // Token ακόμα έγκυρο
         googleAccessToken = savedToken;
         googleUserEmail = savedEmail;
         driveFileId = savedFileId;
         updateGoogleAuthUI(true);
-        // Συγχρονισμός κατά την εκκίνηση
         setTimeout(() => syncFromDrive(), 1500);
+    } else if (savedEmail) {
+        // Token έληξε αλλά είχε συνδεθεί ξανά — silent refresh
+        silentTokenRefresh();
+    }
+}
+
+function silentTokenRefresh() {
+    try {
+        const client = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: DRIVE_SCOPE,
+            prompt: '',   // silent — χωρίς popup αν υπάρχει ενεργή συνεδρία
+            hint: localStorage.getItem('googleUserEmail') || '',
+            callback: (response) => {
+                if (response.error || !response.access_token) {
+                    // Silent απέτυχε — ο χρήστης θα συνδεθεί χειροκίνητα
+                    return;
+                }
+                googleAccessToken = response.access_token;
+                googleUserEmail = localStorage.getItem('googleUserEmail');
+                driveFileId = localStorage.getItem('driveFileId');
+                const expiry = Date.now() + (response.expires_in * 1000);
+                localStorage.setItem('googleAccessToken', googleAccessToken);
+                localStorage.setItem('googleTokenExpiry', expiry.toString());
+                updateGoogleAuthUI(true);
+                setTimeout(() => syncFromDrive(), 1000);
+            }
+        });
+        client.requestAccessToken({ prompt: '' });
+    } catch(e) {
+        // Silent refresh δεν υποστηρίζεται — αγνοούμε
     }
 }
 
@@ -9472,8 +9502,9 @@ async function syncToDrive() {
         showSyncToast('✅ Αποθηκεύτηκε στο Drive!', 'success');
     } catch(e) {
         if (e.message === 'TOKEN_EXPIRED') {
-            googleSignOut();
-            showSyncToast('⚠️ Η σύνδεση έληξε. Συνδέσου ξανά.', 'error');
+            showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
+            googleAccessToken = null;
+            silentTokenRefresh();
         } else {
             showSyncToast('❌ Σφάλμα αποθήκευσης', 'error');
         }
@@ -9515,8 +9546,9 @@ async function syncFromDrive() {
         }
     } catch(e) {
         if (e.message === 'TOKEN_EXPIRED') {
-            googleSignOut();
-            showSyncToast('⚠️ Η σύνδεση έληξε. Συνδέσου ξανά.', 'error');
+            showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
+            googleAccessToken = null;
+            silentTokenRefresh();
         } else {
             showSyncToast('❌ Σφάλμα φόρτωσης', 'error');
         }
