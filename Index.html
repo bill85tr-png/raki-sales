@@ -3629,18 +3629,20 @@
                 </div>
                 <!-- Credit Toggle (κρυμμένο αν δεν υπάρχει credit) -->
                 <div id="saleCreditToggleBox"
-                     style="display:none; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+                     style="display:none; flex-direction:row; align-items:center; justify-content:center; gap:6px;
                             padding:3px 10px; border-radius:10px; background:var(--input-bg);
                             border:1px solid var(--border-color); cursor:not-allowed; opacity:0.35;
-                            transition:all 0.2s; user-select:none; min-width:68px;"
+                            transition:all 0.2s; user-select:none;"
                      data-enabled="false"
                      onclick="onSaleCreditToggleBox()">
-                    <span id="saleCreditToggleAmount" style="font-size:10px; color:#A5D6A7; font-weight:700; white-space:nowrap;">0.00€</span>
                     <label class="slide-toggle" style="margin:0; pointer-events:none;">
                         <input type="checkbox" id="saleCreditToggle">
                         <span class="slide-toggle-slider"></span>
                     </label>
-                    <span style="font-size:9px; opacity:0.65;">υπόλοιπο</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-start; gap:1px;">
+                        <span id="saleCreditToggleAmount" style="font-size:10px; color:#A5D6A7; font-weight:700; white-space:nowrap;">0.00€</span>
+                        <span style="font-size:9px; opacity:0.65; white-space:nowrap;">υπόλοιπο</span>
+                    </div>
                 </div>
                 <!-- Coins Toggle -->
                 <div onclick="onGaveMoreToggleBox()" id="gaveMoreToggleBox"
