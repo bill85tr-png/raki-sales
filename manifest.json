@@ -1,7 +1,7 @@
 {
-  "name": "Ρακή Πωλήσεις",
-  "short_name": "Ρακή",
-  "description": "Διαχείριση Πωλήσεων & Αποθέματος Ρακής",
+  "name": "Ρακί Πωλήσεις",
+  "short_name": "Ρακί",
+  "description": "Διαχείριση Πωλήσεων & Αποθέματος Ρακί",
   "start_url": "/raki-sales/Index.html",
   "display": "standalone",
   "background_color": "#1a1a1a",

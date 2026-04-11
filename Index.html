@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Raki Sales">
+    <link rel="manifest" href="manifest.json">
 
     <title>Raki Sales</title>
     <!-- Font Awesome CDN -->
@@ -9762,6 +9763,17 @@ window.addEventListener('load', () => {
         </div>
     </div>
 </div>
+
+<script>
+// Εγγραφή Service Worker για PWA offline υποστήριξη
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Service Worker εγγράφηκε:', reg.scope))
+            .catch(err => console.log('Service Worker σφάλμα:', err));
+    });
+}
+</script>
 
 </body>
 </html>
