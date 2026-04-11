@@ -4350,19 +4350,21 @@
 
         // Υπολογισμός τιμής για πώληση
         function calculateSalePrice() {
-            // Βρίσκουμε το επιλεγμένο κουμπί
             const selectedBtn = document.querySelector('.bottle-buttons-container .bottle-btn.active');
             const type = selectedBtn ? parseFloat(selectedBtn.dataset.type) : 1.5;
             const qty = parseInt(document.getElementById('saleQty').value) || 1;
             const date = document.getElementById('saleDate').value;
 
-            // Χρησιμοποιούμε την ημερομηνία της πώλησης
             const pricePerLiterForDate = getPricePerLiter(date);
-            const totalPrice = (type * qty * pricePerLiterForDate).toFixed(2);
-            
-            document.getElementById('salePriceDisplay').textContent = totalPrice + '€';
+            const fullPrice = parseFloat((type * qty * pricePerLiterForDate).toFixed(2));
+
+            // Αφαίρεση credit αν είναι ενεργό
+            const afterCredit = Math.max(0, parseFloat((fullPrice - saleUseCreditAmount).toFixed(2)));
+
+            document.getElementById('salePriceDisplay').textContent = afterCredit.toFixed(2) + '€';
             document.getElementById('salePricePerLiter').textContent = pricePerLiterForDate;
-            document.getElementById('salePrice').value = totalPrice;
+            // Το hidden field κρατά την πλήρη τιμή (για σωστή καταχώρηση)
+            document.getElementById('salePrice').value = fullPrice.toFixed(2);
         }
 
         // Navigation
@@ -4713,6 +4715,8 @@
                 box.style.borderColor = '#4CAF50';
                 box.style.background = '#1B5E20';
             }
+            // Ανανέωση τιμής πώλησης
+            calculateSalePrice();
         }
 
         function setSaleCreditEnabled(enabled) {
@@ -4727,6 +4731,7 @@
                 if (t) t.checked = false;
                 box.style.borderColor = '';
                 box.style.background = '';
+                calculateSalePrice();
             }
         }
 
