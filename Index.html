@@ -5545,9 +5545,6 @@ if (filteredSales.length === 0) {
                             <button class="pay-now-btn-compact" onclick="markSalePaid(${sale.id})">
                                 <i class="fas fa-check-circle"></i> Εξόφληση Τώρα
                             </button>
-                            <button class="pay-now-btn-compact" style="background:rgba(255,152,0,0.15);color:#ff9800;border:1px solid rgba(255,152,0,0.3);" onclick="openPartialPayment(${sale.id})">
-                                <i class="fas fa-coins"></i> Μερική Πληρωμή
-                            </button>
                         </div>
                     ` : ''}
                 `;
@@ -5835,6 +5832,9 @@ if (filteredCustomers.length === 0) {
     <div class="customer-actions-compact">
         <button class="pay-all-btn-compact" onclick="payAllCustomerDebts(${customer.id})">
             <i class="fas fa-check-circle"></i> Εξόφληση όλης της οφειλής (${stats.pendingMoney.toFixed(2)}€)
+        </button>
+        <button class="pay-all-btn-compact" style="background:rgba(255,152,0,0.15);color:#ff9800;border:1px solid rgba(255,152,0,0.3);margin-top:6px;" onclick="openCustomerPartialPayment(${customer.id})">
+            <i class="fas fa-coins"></i> Μερική Πληρωμή
         </button>
     </div>
 ` : ''}
@@ -8281,71 +8281,112 @@ function exportFullHistoryWithPayments() {
 <script>
 
 let currentPaymentId = null;
+let currentPaymentCustomerId = null;
 
 function openPartialPayment(id){
     const sale = sales.find(s => s.id === id);
     if(!sale) return;
-
-    // FIX #4: Χρήση getRemainingAmount() ως μόνη πηγή αλήθειας
     const remaining = getRemainingAmount(sale);
     currentPaymentId = id;
-
+    currentPaymentCustomerId = null;
     document.getElementById("partialPaymentAmount").value = remaining.toFixed(2);
-    document.getElementById("partialPaymentInfo").innerText =
-        "Υπόλοιπο: " + remaining.toFixed(2) + "€";
+    document.getElementById("partialPaymentInfo").innerText = "Υπόλοιπο: " + remaining.toFixed(2) + "€";
+    document.getElementById("partialPaymentModal").style.display = "flex";
+}
 
+function openCustomerPartialPayment(customerId) {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return;
+    const stats = calculateCustomerStats(customerId);
+    if (stats.pendingMoney <= 0) return;
+
+    currentPaymentCustomerId = customerId;
+    currentPaymentId = null;
+
+    document.getElementById("partialPaymentAmount").value = '';
+    document.getElementById("partialPaymentInfo").innerText =
+        `Πελάτης: ${customer.name} — Συνολική οφειλή: ${stats.pendingMoney.toFixed(2)}€`;
     document.getElementById("partialPaymentModal").style.display = "flex";
 }
 
 function closePartialPayment(){
     document.getElementById("partialPaymentModal").style.display = "none";
     currentPaymentId = null;
+    currentPaymentCustomerId = null;
 }
 
 function confirmPartialPayment(){
     const amount = parseFloat(document.getElementById("partialPaymentAmount").value);
-    if(!currentPaymentId || isNaN(amount) || amount <= 0){
+    if(isNaN(amount) || amount <= 0){
         alert("Μη έγκυρο ποσό");
         return;
     }
 
-    const sale = sales.find(s => s.id === currentPaymentId);
-    if(!sale) return;
-
-    const remaining = getRemainingAmount(sale);
-    if(amount > remaining + 0.001){
-        alert("Το ποσό υπερβαίνει το υπόλοιπο (" + remaining.toFixed(2) + "€)");
+    // Μερική πληρωμή για συγκεκριμένη πώληση (παλιά λογική)
+    if (currentPaymentId && !currentPaymentCustomerId) {
+        const sale = sales.find(s => s.id === currentPaymentId);
+        if(!sale) return;
+        const remaining = getRemainingAmount(sale);
+        if(amount > remaining + 0.001){
+            alert("Το ποσό υπερβαίνει το υπόλοιπο (" + remaining.toFixed(2) + "€)");
+            return;
+        }
+        const oldSalesState = JSON.parse(JSON.stringify(sales));
+        if(!sale.payments) sale.payments = [];
+        sale.payments.push({ amount: parseFloat(amount.toFixed(2)), date: new Date().toISOString() });
+        const newRemaining = getRemainingAmount(sale);
+        sale.payment = newRemaining <= 0.001 ? "paid" : "pending";
+        saveData();
+        closePartialPayment();
+        updateAllDisplays();
+        saveToHistory('partial_payment', { saleId: currentPaymentId, amount: parseFloat(amount.toFixed(2)), oldSalesState, newSalesState: JSON.parse(JSON.stringify(sales)) });
         return;
     }
 
-    const oldSalesState = JSON.parse(JSON.stringify(sales));
+    // Μερική πληρωμή πελάτη — αφαίρεση από παλαιότερες πωλήσεις πρώτα
+    if (currentPaymentCustomerId) {
+        const stats = calculateCustomerStats(currentPaymentCustomerId);
+        if (amount > stats.pendingMoney + 0.001) {
+            alert("Το ποσό υπερβαίνει τη συνολική οφειλή (" + stats.pendingMoney.toFixed(2) + "€)");
+            return;
+        }
 
-    if(!sale.payments) sale.payments = [];
-    sale.payments.push({
-        amount: parseFloat(amount.toFixed(2)),
-        date: new Date().toISOString()
-    });
+        const oldSalesState = JSON.parse(JSON.stringify(sales));
 
-    const newRemaining = getRemainingAmount(sale);
-    sale.payment = newRemaining <= 0.001 ? "paid" : "pending";
+        // Βρες τις εκκρεμείς πωλήσεις του πελάτη ταξινομημένες από παλαιότερη → νεότερη
+        const pendingSales = sales
+            .filter(s => s.customerId === currentPaymentCustomerId && s.payment === 'pending' && !s.gift)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    saveData();
-    closePartialPayment();
-    updateAllDisplays();
+        let leftToApply = parseFloat(amount.toFixed(2));
 
-    saveToHistory('partial_payment', {
-        saleId: currentPaymentId,
-        amount: parseFloat(amount.toFixed(2)),
-        oldSalesState: oldSalesState,
-        newSalesState: JSON.parse(JSON.stringify(sales))
-    });
+        for (const sale of pendingSales) {
+            if (leftToApply <= 0.001) break;
+            const remaining = getRemainingAmount(sale);
+            if (remaining <= 0) continue;
 
-    
+            const applying = Math.min(leftToApply, remaining);
+            if (!sale.payments) sale.payments = [];
+            sale.payments.push({
+                amount: parseFloat(applying.toFixed(2)),
+                date: new Date().toISOString()
+            });
+            const newRemaining = getRemainingAmount(sale);
+            sale.payment = newRemaining <= 0.001 ? "paid" : "pending";
+            leftToApply = parseFloat((leftToApply - applying).toFixed(2));
+        }
+
+        saveData();
+        closePartialPayment();
+        updateAllDisplays();
+        saveToHistory('partial_payment_customer', {
+            customerId: currentPaymentCustomerId,
+            amount: parseFloat(amount.toFixed(2)),
+            oldSalesState,
+            newSalesState: JSON.parse(JSON.stringify(sales))
+        });
+    }
 }
-
-
-
-
 </script>
 
 <!-- ==================== CONFIRM PAY ALL MODAL ==================== -->
