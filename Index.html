@@ -8355,7 +8355,7 @@ function confirmPartialPayment(){
 
         // Βρες τις εκκρεμείς πωλήσεις του πελάτη ταξινομημένες από παλαιότερη → νεότερη
         const pendingSales = sales
-            .filter(s => s.customerId === currentPaymentCustomerId && s.payment === 'pending' && !s.gift)
+            .filter(s => String(s.customerId) === String(currentPaymentCustomerId) && s.payment === 'pending' && !s.gift)
             .sort((a, b) => new Date(a.date) - new Date(b.date));
 
         let leftToApply = parseFloat(amount.toFixed(2));
