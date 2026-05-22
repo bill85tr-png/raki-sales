@@ -5181,7 +5181,11 @@
                     const oldPayment = sale.payment;
                     const remaining = getRemainingAmount(sale);
 
-                    // Προσθήκη payment record για το υπόλοιπο ποσό
+                    // Αν υπάρχει credit πελάτη, χρησιμοποιείται για κάλυψη της οφειλής
+                    const custObj = customers.find(c => String(c.id) === String(sale.customerId));
+                    const custCredit = custObj && custObj.credit > 0 ? parseFloat(custObj.credit) : 0;
+                    const usedCredit = Math.min(custCredit, remaining);
+
                     if (!sale.payments) sale.payments = [];
                     if (remaining > 0) {
                         sale.payments.push({
@@ -5192,16 +5196,19 @@
                     sale.payment = 'paid';
                     sale.remainingAmount = 0;
 
+                    // Αφαίρεση credit που χρησιμοποιήθηκε
+                    if (usedCredit > 0) {
+                        addCreditToCustomer(String(sale.customerId), -usedCredit);
+                    }
+
                     saveData();
                     updateAllDisplays();
-                    
-                    
-                    saveToHistory('mark_sale_paid', { 
+
+                    saveToHistory('mark_sale_paid', {
                         saleId: saleId,
                         oldPayment: oldPayment,
                         newPayment: 'paid'
                     });
-
                 }
             }
         }
@@ -5233,7 +5240,15 @@
                 const customerSales = sales.filter(s => s.customerId == customerId && s.payment === 'pending');
                 const oldSalesState = JSON.parse(JSON.stringify(sales));
                 const now = new Date().toISOString();
-                
+
+                // Συνολικό χρέος
+                const totalDebt = customerSales.reduce((sum, s) => sum + getRemainingAmount(s), 0);
+
+                // Credit που θα χρησιμοποιηθεί
+                const custObj = customers.find(c => String(c.id) === String(customerId));
+                const custCredit = custObj && custObj.credit > 0 ? parseFloat(custObj.credit) : 0;
+                const usedCredit = Math.min(custCredit, totalDebt);
+
                 sales.forEach(sale => {
                     if (sale.customerId == customerId && sale.payment === 'pending') {
                         const remaining = getRemainingAmount(sale);
@@ -5245,16 +5260,20 @@
                         sale.remainingAmount = 0;
                     }
                 });
-                
+
+                // Αφαίρεση credit που χρησιμοποιήθηκε
+                if (usedCredit > 0) {
+                    addCreditToCustomer(String(customerId), -usedCredit);
+                }
+
                 saveData();
                 updateAllDisplays();
-                saveToHistory('pay_all_customer_debts', { 
+                saveToHistory('pay_all_customer_debts', {
                     customerId: customerId,
                     affectedSales: customerSales.map(s => s.id),
                     oldSalesState: oldSalesState,
                     newSalesState: JSON.parse(JSON.stringify(sales))
                 });
-
             }
         }
 
@@ -8415,6 +8434,17 @@ function confirmPartialPayment(){
             oldSalesState,
             newSalesState: JSON.parse(JSON.stringify(sales))
         });
+
+        // Αν εξοφλήθηκε το σύνολο (amount >= realDebt), αφαίρεσε το credit
+        const statsAfter = calculateCustomerStats(currentPaymentCustomerId);
+        if (statsAfter.pendingMoney <= 0) {
+            const custObj = customers.find(c => String(c.id) === String(currentPaymentCustomerId));
+            if (custObj && custObj.credit > 0) {
+                custObj.credit = 0;
+                saveData();
+                updateAllDisplays();
+            }
+        }
     }
 }
 </script>
