@@ -5539,10 +5539,21 @@ if (filteredSales.length === 0) {
                             ${(() => {
                                 const rem = getRemainingAmount(sale);
                                 const hasPartial = Array.isArray(sale.payments) && sale.payments.length > 0 && sale.payment === 'pending';
+                                const custObj = customers.find(c => String(c.id) === String(sale.customerId));
+                                const custCredit = custObj && custObj.credit > 0 ? parseFloat(custObj.credit) : 0;
+                                const realRem = Math.max(0, parseFloat((rem - custCredit).toFixed(2)));
                                 if (sale.gift) {
                                     return `<div style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">${statusBadge} <span class="amount-highlight">0.00€</span></div>`;
                                 } else if (hasPartial) {
-                                    return `<div style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">${statusBadge}<div style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.3; margin-left:4px;"><span class="amount-highlight" style="color:#ff9800;">${rem.toFixed(2)}€</span><span style="font-size:10px; color:#888;">από ${sale.total.toFixed(2)}€</span></div></div>`;
+                                    const creditInfo = custCredit > 0
+                                        ? `<span style="font-size:10px; color:#4CAF50;">(+${custCredit.toFixed(2)}€ credit)</span>`
+                                        : '';
+                                    return `<div style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">${statusBadge}<div style="display:flex; flex-direction:column; align-items:flex-end; line-height:1.3; margin-left:4px;">
+                                        ${custCredit > 0 ? `<span class="amount-highlight" style="color:#aaa; text-decoration:line-through; font-size:11px;">${rem.toFixed(2)}€</span>` : ''}
+                                        <span class="amount-highlight" style="color:#ff9800;">${realRem.toFixed(2)}€</span>
+                                        <span style="font-size:10px; color:#888;">από ${sale.total.toFixed(2)}€</span>
+                                        ${creditInfo}
+                                    </div></div>`;
                                 } else {
                                     return `<div style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">${statusBadge} <span class="amount-highlight">${sale.total.toFixed(2)}€</span></div>`;
                                 }
@@ -5804,7 +5815,10 @@ if (filteredCustomers.length === 0) {
                         </div>
                         <div style="display:flex; align-items:center; gap:6px; margin-left:auto;">
                             ${stats.pendingMoney > 0
-                                ? `<span style="font-size:13px; font-weight:bold; color:#ff9800; white-space:nowrap;">${stats.pendingMoney.toFixed(2)}€</span>`
+                                ? stats.credit > 0
+                                    ? `<span style="font-size:11px; color:#888; text-decoration:line-through; white-space:nowrap;">${stats.pendingMoney.toFixed(2)}€</span>
+                                       <span style="font-size:13px; font-weight:bold; color:#ff9800; white-space:nowrap;">${stats.realDebt.toFixed(2)}€</span>`
+                                    : `<span style="font-size:13px; font-weight:bold; color:#ff9800; white-space:nowrap;">${stats.pendingMoney.toFixed(2)}€</span>`
                                 : `<span style="font-size:12px; color:#4CAF50; white-space:nowrap;"><i class="fas fa-check-circle"></i></span>`
                             }
                             ${customer.credit > 0
@@ -5906,14 +5920,21 @@ if (filteredCustomers.length === 0) {
             const pendingMoney = customerSales
                 .filter(s => s.payment === 'pending')
                 .reduce((sum, s) => sum + getRemainingAmount(s), 0);
-            
+
+            // Πραγματική οφειλή = χρέος μείον τυχόν credit
+            const customerObj = customers.find(c => c.id == customerId);
+            const credit = customerObj && customerObj.credit > 0 ? parseFloat(customerObj.credit) : 0;
+            const realDebt = Math.max(0, parseFloat((pendingMoney - credit).toFixed(2)));
+
             return {
                 totalBottles0_5,
                 totalBottles1_5,
                 totalBottles5,
                 totalBottles,
                 totalMoney,
-                pendingMoney
+                pendingMoney,
+                credit,
+                realDebt
             };
         }
 
