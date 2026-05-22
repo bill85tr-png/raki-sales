@@ -3445,7 +3445,7 @@
                         padding:8px 12px; border-radius:10px; background:var(--input-bg);
                         border:1px solid var(--border-color);">
                 <i class="fas fa-coins" style="font-size:14px; opacity:0.8;"></i>
-                <span style="font-size:13px; flex:1;">Έδωσε παραπάνω (€)</span>
+                <span style="font-size:13px; flex:1;">Πόσα έδωσε (€)</span>
                 <input type="number" id="editTransactionGaveMore"
                        placeholder="π.χ. 40" step="0.5" min="0"
                        style="width:90px; padding:5px 8px; border-radius:8px;
@@ -4808,7 +4808,7 @@
 
         function updateGaveMorePreview() {
             const val = parseFloat(document.getElementById('gaveMoreInput').value);
-            const priceEl = document.getElementById('salePriceDisplay').textContent;
+            const priceEl = document.getElementById('gaveMoreSaleAmount').textContent;
             const saleTotal = parseFloat(priceEl.replace('€','').replace(',','.')) || 0;
             const preview = document.getElementById('gaveMorePreview');
             if (isNaN(val) || val <= 0) { preview.textContent = ''; return; }
@@ -4816,9 +4816,9 @@
             if (diff > 0) {
                 preview.innerHTML = `<span style="color:#4CAF50; font-weight:700;">+${diff.toFixed(2)}€ → credit για επόμενη φορά</span>`;
             } else if (diff === 0) {
-                preview.innerHTML = `<span style="color:#aaa;">Ακριβής πληρωμή</span>`;
+                preview.innerHTML = `<span style="color:#aaa;">Ακριβής πληρωμή ✓</span>`;
             } else {
-                preview.innerHTML = `<span style="color:#f44336;">Λείπουν ${Math.abs(diff).toFixed(2)}€</span>`;
+                preview.innerHTML = `<span style="color:#ff9800; font-weight:700;">Χρωστάει ${Math.abs(diff).toFixed(2)}€ → εκκρεμής οφειλή</span>`;
             }
         }
 
@@ -5076,11 +5076,20 @@
                 saleUseCreditAmount = 0;
             }
 
-            // Προσθήκη credit αν ο πελάτης έδωσε παραπάνω
+            // Χειρισμός "Πόσα έδωσε"
             if (saleGaveMoreAmount > 0) {
                 const diff = parseFloat((saleGaveMoreAmount - total).toFixed(2));
                 if (diff > 0) {
+                    // Έδωσε περισσότερα → credit
                     addCreditToCustomer(custId, diff, 'Υπόλοιπο από πληρωμή');
+                } else if (diff < 0) {
+                    // Έδωσε λιγότερα → μερική πληρωμή, υπόλοιπο ως χρέος
+                    const paid = saleGaveMoreAmount;
+                    const owed = Math.abs(diff);
+                    newSale.payment = 'pending';
+                    newSale.remainingAmount = parseFloat(owed.toFixed(2));
+                    if (!newSale.payments) newSale.payments = [];
+                    newSale.payments = [{ amount: paid, date: new Date().toISOString() }];
                 }
                 saleGaveMoreAmount = 0;
             }
@@ -7416,7 +7425,7 @@ function toggleEditSortDropdown() {
                              style="display:flex; align-items:center; gap:8px; margin:6px 0;
                                     ${(sale.payment !== 'paid' || sale.gift) ? 'opacity:0.35; pointer-events:none;' : ''}">
                             <i class="fas fa-coins" style="font-size:13px; opacity:0.8;"></i>
-                            <span style="font-size:13px; flex:1;">Έδωσε παραπάνω (€)</span>
+                            <span style="font-size:13px; flex:1;">Πόσα έδωσε (€)</span>
                             <input type="number" id="edit-sale-gavermore-${sale.id}"
                                    placeholder="π.χ. 40" step="0.5" min="0"
                                    style="width:90px; padding:5px 8px; border-radius:8px;
@@ -9690,15 +9699,15 @@ window.addEventListener('load', () => {
         <div class="credit-popup-header" style="background:linear-gradient(135deg,#1565C0,#0D47A1);">
             <div class="credit-popup-header-icon">💰</div>
             <div class="credit-popup-header-text">
-                <strong>Έδωσε παραπάνω;</strong>
-                <small>Το υπόλοιπο θα αποθηκευτεί ως credit</small>
+                <strong>Πόσα έδωσε;</strong>
+                <small>Περισσότερα → credit | Λιγότερα → χρέος</small>
             </div>
         </div>
         <div class="credit-popup-body">
             <div style="font-size:13px; color:#aaa; margin-bottom:6px;">Αξία πώλησης</div>
             <div class="credit-popup-amount" id="gaveMoreSaleAmount" style="color:#2196F3; font-size:26px;">37.50€</div>
             <div style="margin:18px 0 8px; font-size:14px; font-weight:600; text-align:left;">Ποσό που έδωσε (€)</div>
-            <input type="number" id="gaveMoreInput" placeholder="π.χ. 40" step="0.5" min="0"
+            <input type="number" id="gaveMoreInput" placeholder="π.χ. 20" step="0.5" min="0"
                    oninput="updateGaveMorePreview()"
                    style="font-size:22px; text-align:center; padding:10px; border-radius:10px;
                           background:var(--input-bg); border:1px solid var(--border-color);
