@@ -5174,6 +5174,16 @@
         }
 
         // Πληρωμές - ΒΕΛΤΙΩΜΕΝΕΣ με undo/redo
+        function resetCustomerCredit(customerId) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer || !customer.credit) return;
+            if (confirm(`Μηδενισμός credit ${customer.credit.toFixed(2)}€ για ${customer.name};`)) {
+                customer.credit = 0;
+                saveData();
+                updateAllDisplays();
+            }
+        }
+
         function markSalePaid(saleId) {
             if (confirm('Είστε σίγουρος ότι θέλετε να σημειώσετε αυτήν την πώληση ως πληρωμένη;')) {
                 const sale = sales.find(s => s.id == saleId);
@@ -5877,6 +5887,14 @@ if (filteredCustomers.length === 0) {
         </button>
         <button class="pay-all-btn-compact" style="background:rgba(255,152,0,0.15);color:#ff9800;border:1px solid rgba(255,152,0,0.3);margin-top:6px;" onclick="openCustomerPartialPayment(${customer.id})">
             <i class="fas fa-coins"></i> Μερική Πληρωμή
+        </button>
+    </div>
+` : ''}
+                        ${customer.credit > 0 ? `
+    <div class="customer-actions-compact" style="margin-top:6px;">
+        <button class="pay-all-btn-compact" style="background:rgba(76,175,80,0.12);color:#4CAF50;border:1px solid rgba(76,175,80,0.3);"
+                onclick="resetCustomerCredit(${customer.id})">
+            <i class="fas fa-coins"></i> Μηδενισμός Credit (+${parseFloat(customer.credit).toFixed(2)}€)
         </button>
     </div>
 ` : ''}
