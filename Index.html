@@ -4689,6 +4689,15 @@
             const box = document.getElementById('saleCreditToggleBox');
             const amountEl = document.getElementById('saleCreditToggleAmount');
             if (!box) return;
+
+            // Υπολογισμός παλιού χρέους — αποθηκεύεται προσωρινά στο customer object
+            if (customer) {
+                const pendingDebt = sales
+                    .filter(s => String(s.customerId) === String(custId) && s.payment === 'pending')
+                    .reduce((sum, s) => sum + getRemainingAmount(s), 0);
+                customer._pendingDebt = parseFloat(pendingDebt.toFixed(2));
+            }
+
             if (credit > 0) {
                 amountEl.textContent = credit.toFixed(2) + '€';
                 box.style.display = 'flex';
@@ -4802,6 +4811,20 @@
             document.getElementById('gaveMoreSaleAmount').textContent = priceText;
             document.getElementById('gaveMoreInput').value = '';
             document.getElementById('gaveMorePreview').textContent = '';
+
+            // Παλιό χρέος πελάτη
+            const custId = document.getElementById('saleCustomer').value;
+            const custObj = customers.find(c => String(c.id) === String(custId));
+            const oldDebt = custObj ? (custObj._pendingDebt || 0) : 0;
+            const oldDebtRow = document.getElementById('gaveMoreOldDebtRow');
+            const oldDebtAmountEl = document.getElementById('gaveMoreOldDebtAmount');
+            if (oldDebt > 0) {
+                oldDebtAmountEl.textContent = oldDebt.toFixed(2) + '€';
+                oldDebtRow.style.display = 'block';
+            } else {
+                oldDebtRow.style.display = 'none';
+            }
+
             document.getElementById('gaveMorePopupOverlay').classList.add('visible');
             setTimeout(() => document.getElementById('gaveMoreInput').focus(), 150);
         }
@@ -4812,14 +4835,30 @@
             const saleTotal = parseFloat(priceEl.replace('€','').replace(',','.')) || 0;
             const preview = document.getElementById('gaveMorePreview');
             if (isNaN(val) || val <= 0) { preview.textContent = ''; return; }
-            const diff = parseFloat((val - saleTotal).toFixed(2));
-            if (diff > 0) {
-                preview.innerHTML = `<span style="color:#4CAF50; font-weight:700;">+${diff.toFixed(2)}€ → credit για επόμενη φορά</span>`;
-            } else if (diff === 0) {
-                preview.innerHTML = `<span style="color:#aaa;">Ακριβής πληρωμή ✓</span>`;
-            } else {
-                preview.innerHTML = `<span style="color:#ff9800; font-weight:700;">Χρωστάει ${Math.abs(diff).toFixed(2)}€ → εκκρεμής οφειλή</span>`;
+
+            // Παλιό χρέος
+            const custId = document.getElementById('saleCustomer').value;
+            const custObj = customers.find(c => String(c.id) === String(custId));
+            const oldDebt = custObj ? (custObj._pendingDebt || 0) : 0;
+
+            // Συνολικό ποσό που πρέπει να καλύψει: νέα πώληση + παλιό χρέος
+            const totalOwed = parseFloat((saleTotal + oldDebt).toFixed(2));
+            const diff = parseFloat((val - totalOwed).toFixed(2));
+
+            let html = '';
+            if (oldDebt > 0) {
+                html += `<div style="color:#aaa; font-size:12px; margin-bottom:4px;">
+                    Νέα: ${saleTotal.toFixed(2)}€ + Οφειλή: ${oldDebt.toFixed(2)}€ = <strong>${totalOwed.toFixed(2)}€</strong>
+                </div>`;
             }
+            if (diff > 0) {
+                html += `<span style="color:#4CAF50; font-weight:700;">+${diff.toFixed(2)}€ → credit για επόμενη φορά</span>`;
+            } else if (diff === 0) {
+                html += `<span style="color:#aaa;">Ακριβής πληρωμή ✓</span>`;
+            } else {
+                html += `<span style="color:#ff9800; font-weight:700;">Χρωστάει ${Math.abs(diff).toFixed(2)}€ → εκκρεμής οφειλή</span>`;
+            }
+            preview.innerHTML = html;
         }
 
         function confirmGaveMorePopup() {
@@ -4828,6 +4867,7 @@
                 cancelGaveMorePopup();
                 return;
             }
+            // Αποθηκεύουμε το ποσό που έδωσε — το addSale θα συνυπολογίσει το παλιό χρέος
             saleGaveMoreAmount = val;
             document.getElementById('gaveMorePopupOverlay').classList.remove('visible');
             document.getElementById('saleGaveMoreToggle').checked = true;
@@ -5078,19 +5118,42 @@
 
             // Χειρισμός "Πόσα έδωσε"
             if (saleGaveMoreAmount > 0) {
-                const diff = parseFloat((saleGaveMoreAmount - total).toFixed(2));
+                // Παλιό χρέος πελάτη
+                const custObj = customers.find(c => String(c.id) === String(custId));
+                const oldDebt = custObj ? (custObj._pendingDebt || 0) : 0;
+
+                // Το συνολικό που έπρεπε να πληρώσει = νέα πώληση + παλιό χρέος
+                const totalOwed = parseFloat((total + oldDebt).toFixed(2));
+                const diff = parseFloat((saleGaveMoreAmount - totalOwed).toFixed(2));
+
                 if (diff > 0) {
-                    // Έδωσε περισσότερα → credit
+                    // Έδωσε παραπάνω → credit
                     addCreditToCustomer(custId, diff, 'Υπόλοιπο από πληρωμή');
                 } else if (diff < 0) {
-                    // Έδωσε λιγότερα → μερική πληρωμή, υπόλοιπο ως χρέος
-                    const paid = saleGaveMoreAmount;
+                    // Έδωσε λιγότερα → μερική πληρωμή
                     const owed = Math.abs(diff);
                     newSale.payment = 'pending';
                     newSale.remainingAmount = parseFloat(owed.toFixed(2));
                     if (!newSale.payments) newSale.payments = [];
-                    newSale.payments = [{ amount: paid, date: new Date().toISOString() }];
+                    newSale.payments = [{ amount: saleGaveMoreAmount, date: new Date().toISOString() }];
                 }
+
+                // Αν κάλυψε και παλιό χρέος, εξοφλούμε τις παλιές pending πωλήσεις
+                if (oldDebt > 0 && saleGaveMoreAmount >= oldDebt) {
+                    const now = new Date().toISOString();
+                    sales.forEach(s => {
+                        if (String(s.customerId) === String(custId) && s.payment === 'pending' && s.id !== newSale.id) {
+                            const rem = getRemainingAmount(s);
+                            if (!s.payments) s.payments = [];
+                            if (rem > 0) s.payments.push({ amount: rem, date: now });
+                            s.payment = 'paid';
+                            s.remainingAmount = 0;
+                        }
+                    });
+                }
+
+                // Καθαρισμός προσωρινού πεδίου
+                if (custObj) custObj._pendingDebt = 0;
                 saleGaveMoreAmount = 0;
             }
 
@@ -9775,7 +9838,15 @@ window.addEventListener('load', () => {
         <div class="credit-popup-body">
             <div style="font-size:13px; color:#aaa; margin-bottom:6px;">Αξία πώλησης</div>
             <div class="credit-popup-amount" id="gaveMoreSaleAmount" style="color:#2196F3; font-size:26px;">37.50€</div>
-            <div style="margin:18px 0 8px; font-size:14px; font-weight:600; text-align:left;">Ποσό που έδωσε (€)</div>
+            <!-- Παλιό χρέος (εμφανίζεται μόνο αν υπάρχει) -->
+            <div id="gaveMoreOldDebtRow" style="display:none; margin-top:10px; padding:8px 12px; border-radius:8px; background:rgba(255,152,0,0.12); border:1px solid rgba(255,152,0,0.3);">
+                <div style="font-size:12px; color:#ff9800; display:flex; justify-content:space-between; align-items:center;">
+                    <span>⚠️ Εκκρεμής οφειλή</span>
+                    <span id="gaveMoreOldDebtAmount" style="font-weight:700;">2.50€</span>
+                </div>
+                <div style="font-size:11px; color:#aaa; margin-top:2px;">Θα συμψηφιστεί με την πληρωμή</div>
+            </div>
+            <div style="margin:14px 0 8px; font-size:14px; font-weight:600; text-align:left;">Ποσό που έδωσε (€)</div>
             <input type="number" id="gaveMoreInput" placeholder="π.χ. 20" step="0.5" min="0"
                    oninput="updateGaveMorePreview()"
                    style="font-size:22px; text-align:center; padding:10px; border-radius:10px;
