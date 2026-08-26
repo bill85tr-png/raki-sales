@@ -3691,20 +3691,12 @@
             </div>
             <input type="hidden" id="transferQty" value="1">
             <div class="slide-toggle-container home">
-                <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-home"></i></div><div class="toggle-explanation">Από: Σπίτι</div></div>
-                <label class="slide-toggle"><input type="checkbox" id="transferFromHome" checked onchange="handleTransferToggleChange('from', 'home')"><span class="slide-toggle-slider"></span></label>
+                <div class="slide-toggle-label"><div class="slide-toggle-icon" style="width:auto; display:flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fas fa-home"></i><i class="fas fa-arrow-right" style="font-size:11px;"></i><i class="fas fa-briefcase"></i></div><div class="toggle-explanation">Από Σπίτι προς Δουλειά</div></div>
+                <label class="slide-toggle"><input type="checkbox" id="transferDirHomeToWork" checked onchange="handleTransferDirectionChange('homeToWork')"><span class="slide-toggle-slider"></span></label>
             </div>
             <div class="slide-toggle-container work">
-                <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-briefcase"></i></div><div class="toggle-explanation">Από: Δουλειά</div></div>
-                <label class="slide-toggle"><input type="checkbox" id="transferFromWork" onchange="handleTransferToggleChange('from', 'work')"><span class="slide-toggle-slider"></span></label>
-            </div>
-            <div class="slide-toggle-container home">
-                <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-home"></i></div><div class="toggle-explanation">Προς: Σπίτι</div></div>
-                <label class="slide-toggle"><input type="checkbox" id="transferToHome" onchange="handleTransferToggleChange('to', 'home')"><span class="slide-toggle-slider"></span></label>
-            </div>
-            <div class="slide-toggle-container work">
-                <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-briefcase"></i></div><div class="toggle-explanation">Προς: Δουλειά</div></div>
-                <label class="slide-toggle"><input type="checkbox" id="transferToWork" checked onchange="handleTransferToggleChange('to', 'work')"><span class="slide-toggle-slider"></span></label>
+                <div class="slide-toggle-label"><div class="slide-toggle-icon" style="width:auto; display:flex; align-items:center; gap:5px; white-space:nowrap;"><i class="fas fa-briefcase"></i><i class="fas fa-arrow-right" style="font-size:11px;"></i><i class="fas fa-home"></i></div><div class="toggle-explanation">Από Δουλειά προς Σπίτι</div></div>
+                <label class="slide-toggle"><input type="checkbox" id="transferDirWorkToHome" onchange="handleTransferDirectionChange('workToHome')"><span class="slide-toggle-slider"></span></label>
             </div>
         </div>
         <div style="padding:12px 20px; border-top:1px solid var(--border-color); display:flex; gap:10px;">
@@ -4413,11 +4405,6 @@
                 setupBottleButtons('sale');
             } else if (modalId === 'transferModal') {
                 setupTransferModal();
-                // Set default slide toggle states
-                document.getElementById('transferFromHome').checked = true;
-                document.getElementById('transferFromWork').checked = false;
-                document.getElementById('transferToHome').checked = false;
-                document.getElementById('transferToWork').checked = true;
                 // Setup bottle buttons
                 setupBottleButtons('transfer');
             } else if (modalId === 'purchaseModal') {
@@ -5177,10 +5164,8 @@
 
         // Μεταφορά αποθέματος
         function setupTransferModal() {
-            document.getElementById('transferFromHome').checked = true;
-            document.getElementById('transferFromWork').checked = false;
-            document.getElementById('transferToHome').checked = false;
-            document.getElementById('transferToWork').checked = true;
+            document.getElementById('transferDirHomeToWork').checked = true;
+            document.getElementById('transferDirWorkToHome').checked = false;
         }
 
         function transferStock() {
@@ -5189,22 +5174,14 @@
             const type = selectedBtn ? selectedBtn.dataset.type : '1.5';
             const qty = parseInt(document.getElementById('transferQty').value);
             
-            // Get values from slide toggles
-            const fromHome = document.getElementById('transferFromHome').checked;
-            const fromWork = document.getElementById('transferFromWork').checked;
-            const toHome = document.getElementById('transferToHome').checked;
-            const toWork = document.getElementById('transferToWork').checked;
+            // Get direction from single toggle pair (μόνο μία κατεύθυνση μπορεί να είναι ενεργή)
+            const homeToWork = document.getElementById('transferDirHomeToWork').checked;
             
-            const fromLocation = fromHome ? 'home' : 'work';
-            const toLocation = toHome ? 'home' : 'work';
+            const fromLocation = homeToWork ? 'home' : 'work';
+            const toLocation = homeToWork ? 'work' : 'home';
             
             if (!validateNumber(qty, 1)) {
                 alert('Η ποσότητα πρέπει να είναι τουλάχιστον 1');
-                return;
-            }
-            
-            if (fromLocation === toLocation) {
-                alert('Δεν μπορείτε να μεταφέρετε αποθεματικό στην ίδια τοποθεσία');
                 return;
             }
             
@@ -8196,25 +8173,24 @@ function importData(event) {
             
         }
 
-        function handleTransferToggleChange(direction, value) {
-            if (direction === 'from') {
-                if (value === 'home') {
-                    document.getElementById('transferFromHome').checked = true;
-                    document.getElementById('transferFromWork').checked = false;
-                } else if (value === 'work') {
-                    document.getElementById('transferFromHome').checked = false;
-                    document.getElementById('transferFromWork').checked = true;
+        function handleTransferDirectionChange(direction) {
+            // Τα δύο toggle είναι αμοιβαία αποκλειόμενα: πάντα ακριβώς ένα ενεργό
+            const homeToWork = document.getElementById('transferDirHomeToWork');
+            const workToHome = document.getElementById('transferDirWorkToHome');
+            if (direction === 'homeToWork') {
+                if (homeToWork.checked) {
+                    workToHome.checked = false;
+                } else {
+                    // Δεν επιτρέπεται να μείνουν και τα δύο ανενεργά
+                    homeToWork.checked = true;
                 }
-            } else if (direction === 'to') {
-                if (value === 'home') {
-                    document.getElementById('transferToHome').checked = true;
-                    document.getElementById('transferToWork').checked = false;
-                } else if (value === 'work') {
-                    document.getElementById('transferToHome').checked = false;
-                    document.getElementById('transferToWork').checked = true;
+            } else if (direction === 'workToHome') {
+                if (workToHome.checked) {
+                    homeToWork.checked = false;
+                } else {
+                    workToHome.checked = true;
                 }
             }
-            
         }
 
         // Νέα συνάρτηση για αυτόματη εξαγωγή JSON μετά από καταχώρηση
