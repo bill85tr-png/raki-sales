@@ -9495,9 +9495,9 @@ function showSyncChoiceDialog() {
     if (old) old.remove();
     const d = document.createElement('div');
     d.id = 'syncChoiceDialog';
-    d.style.cssText = `position:fixed;left:0;right:0;bottom:0;z-index:99999;background:transparent;display:flex;align-items:flex-end;justify-content:center;padding:12px;pointer-events:none;`;
+    d.style.cssText = `position:fixed;left:0;right:0;bottom:0;z-index:99999;background:transparent;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;`;
     d.innerHTML = `
-        <div style="pointer-events:auto;background:var(--card-bg,#1e1e1e);border-radius:16px;padding:16px;max-width:360px;width:100%;box-shadow:0 -4px 24px rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.12);">
+        <div style="pointer-events:auto;background:var(--card-bg,#1e1e1e);border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);">
             <div style="font-size:24px;text-align:center;margin-bottom:8px;">☁️</div>
             <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:8px;">Συγχρονισμός Drive</div>
             <div style="font-size:13px;opacity:0.7;text-align:center;margin-bottom:20px;">Τι θέλεις να κάνεις;</div>
