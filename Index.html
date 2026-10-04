@@ -8232,8 +8232,20 @@ function importData(event) {
             
         }
 
-        // Εκκίνηση
-        window.onload = init;
+        // Εκκίνηση — άμεσα μόλις φορτώσει το DOM (χωρίς αναμονή για CDN/γραμματοσειρές)
+        let __appInitialized = false;
+        function initOnce() {
+            if (__appInitialized) return;
+            __appInitialized = true;
+            init();
+            restoreFromIndexedDBIfNeeded();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initOnce);
+        } else {
+            initOnce();
+        }
+        window.addEventListener('load', initOnce);
         
         // Κλείσιμο modal με ESC
         document.addEventListener('keydown', function(event) {
@@ -9483,9 +9495,9 @@ function showSyncChoiceDialog() {
     if (old) old.remove();
     const d = document.createElement('div');
     d.id = 'syncChoiceDialog';
-    d.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;`;
+    d.style.cssText = `position:fixed;left:0;right:0;bottom:0;z-index:99999;background:transparent;display:flex;align-items:flex-end;justify-content:center;padding:12px;pointer-events:none;`;
     d.innerHTML = `
-        <div style="background:var(--card-bg,#1e1e1e);border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+        <div style="pointer-events:auto;background:var(--card-bg,#1e1e1e);border-radius:16px;padding:16px;max-width:360px;width:100%;box-shadow:0 -4px 24px rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.12);">
             <div style="font-size:24px;text-align:center;margin-bottom:8px;">☁️</div>
             <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:8px;">Συγχρονισμός Drive</div>
             <div style="font-size:13px;opacity:0.7;text-align:center;margin-bottom:20px;">Τι θέλεις να κάνεις;</div>
@@ -9777,11 +9789,64 @@ let driveSaveTimeout;
 const originalSaveData = saveData;
 saveData = function() {
     originalSaveData();
+    idbSaveSnapshot();
     if (googleAccessToken) {
         clearTimeout(driveSaveTimeout);
         driveSaveTimeout = setTimeout(() => syncToDrive(), 3000);
     }
 };
+
+// ===== ΜΟΝΙΜΗ ΤΟΠΙΚΗ ΑΠΟΘΗΚΕΥΣΗ (IndexedDB αντίγραφο του localStorage) =====
+const IDB_NAME = 'rakiSalesDB';
+const IDB_STORE = 'snapshot';
+
+function idbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbSaveSnapshot() {
+    try {
+        const db = await idbOpen();
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put({
+            customers, stock, sales, purchases, priceHistory,
+            savedAt: new Date().toISOString()
+        }, 'data');
+    } catch(e) { /* αγνοούμε — το localStorage παραμένει */ }
+}
+async function idbLoadSnapshot() {
+    try {
+        const db = await idbOpen();
+        return await new Promise((resolve) => {
+            const r = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get('data');
+            r.onsuccess = () => resolve(r.result || null);
+            r.onerror = () => resolve(null);
+        });
+    } catch(e) { return null; }
+}
+// Αν ο browser έσβησε το localStorage, επαναφορά από το IndexedDB
+async function restoreFromIndexedDBIfNeeded() {
+    const lsMissing = localStorage.getItem('customers') === null && localStorage.getItem('sales') === null;
+    if (!lsMissing) return;
+    const snap = await idbLoadSnapshot();
+    if (snap && snap.customers && snap.stock && snap.sales && snap.purchases) {
+        customers = snap.customers;
+        stock = snap.stock;
+        sales = snap.sales;
+        purchases = snap.purchases;
+        priceHistory = snap.priceHistory || priceHistory;
+        saveData();
+        updateCustomerSelect();
+    }
+}
+// Ζητάμε από τον browser να μη διαγράψει τα δεδομένα της εφαρμογής
+if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
+}
 
 // Αρχικοποίηση κατά το load
 window.addEventListener('load', () => {
