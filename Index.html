@@ -9455,7 +9455,7 @@ function initGoogleAuth() {
         googleUserEmail = savedEmail;
         driveFileId = savedFileId;
         updateGoogleAuthUI(true);
-        setTimeout(() => showSyncChoiceDialog(), 1500);
+        setTimeout(() => showSyncChoiceDialog({auto:true}), 1500);
     } else if (savedEmail) {
         // Token έληξε αλλά είχε συνδεθεί ξανά — silent refresh
         silentTokenRefresh();
@@ -9481,37 +9481,13 @@ function silentTokenRefresh() {
                 localStorage.setItem('googleAccessToken', googleAccessToken);
                 localStorage.setItem('googleTokenExpiry', expiry.toString());
                 updateGoogleAuthUI(true);
-                setTimeout(() => showSyncChoiceDialog(), 1000);
+                setTimeout(() => showSyncChoiceDialog({auto:true}), 1000);
             }
         });
         client.requestAccessToken({ prompt: '' });
     } catch(e) {
         // Silent refresh δεν υποστηρίζεται — αγνοούμε
     }
-}
-
-function showSyncChoiceDialog() {
-    const old = document.getElementById('syncChoiceDialog');
-    if (old) old.remove();
-    const d = document.createElement('div');
-    d.id = 'syncChoiceDialog';
-    d.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:transparent;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;`;
-    d.innerHTML = `
-        <div style="pointer-events:auto;background:var(--card-bg,#1e1e1e);border-radius:16px;padding:24px;max-width:320px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);">
-            <div style="font-size:24px;text-align:center;margin-bottom:8px;">☁️</div>
-            <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:8px;">Συγχρονισμός Drive</div>
-            <div style="font-size:13px;opacity:0.7;text-align:center;margin-bottom:20px;">Τι θέλεις να κάνεις;</div>
-            <button onclick="syncToDrive();document.getElementById('syncChoiceDialog').remove();" style="width:100%;background:#4CAF50;color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
-                ⬆️ Ανέβασε τα τοπικά στο Drive
-            </button>
-            <button onclick="syncFromDrive();document.getElementById('syncChoiceDialog').remove();" style="width:100%;background:#2196F3;color:white;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
-                ⬇️ Κατέβασε από Drive
-            </button>
-            <button onclick="document.getElementById('syncChoiceDialog').remove();" style="width:100%;background:transparent;color:inherit;border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:12px;font-size:14px;cursor:pointer;">
-                Παράλειψη
-            </button>
-        </div>`;
-    document.body.appendChild(d);
 }
 
 function handleGoogleAuth() {
@@ -9590,15 +9566,10 @@ function showGoogleSyncMenu() {
             <div style="font-size:12px; opacity:0.6; margin-bottom:2px;">Συνδεδεμένος ως</div>
             <div style="font-size:13px; font-weight:600; color:#4CAF50; word-break:break-all;">${googleUserEmail || 'Google χρήστης'}</div>
         </div>
-        <button onclick="syncToDrive(); document.getElementById('googleSyncMenu').remove();" 
+        <button onclick="showSyncChoiceDialog(); document.getElementById('googleSyncMenu').remove();" 
             style="width:100%; background:none; border:none; color:var(--text-color); cursor:pointer; padding:10px 12px; text-align:left; border-radius:8px; display:flex; align-items:center; gap:10px; font-size:14px; transition:background 0.2s;"
             onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background='none'">
-            <i class="fas fa-cloud-upload-alt" style="color:#4285F4; width:16px;"></i> Αποθήκευση στο Drive
-        </button>
-        <button onclick="syncFromDrive(); document.getElementById('googleSyncMenu').remove();" 
-            style="width:100%; background:none; border:none; color:var(--text-color); cursor:pointer; padding:10px 12px; text-align:left; border-radius:8px; display:flex; align-items:center; gap:10px; font-size:14px; transition:background 0.2s;"
-            onmouseover="this.style.background='var(--hover-bg)'" onmouseout="this.style.background='none'">
-            <i class="fas fa-cloud-download-alt" style="color:#4CAF50; width:16px;"></i> Φόρτωση από Drive
+            <i class="fas fa-sync-alt" style="color:#4285F4; width:16px;"></i> Συγχρονισμός Drive…
         </button>
         <div style="border-top:1px solid var(--border-color); margin:6px 0;"></div>
         <button onclick="googleSignOut(); document.getElementById('googleSyncMenu').remove();" 
@@ -9622,84 +9593,289 @@ function showGoogleSyncMenu() {
 }
 
 // Αποθήκευση στο Google Drive
-async function syncToDrive() {
-    if (!googleAccessToken || isSyncing) return;
-    isSyncing = true;
-    showSyncToast('☁️ Αποθήκευση στο Drive...', 'info');
-    
-    const data = JSON.stringify({
-        customers, stock, sales, purchases, priceHistory,
-        exportDate: new Date().toISOString(),
-        version: '3.4'
-    });
-    
-    try {
-        // Βρίσκουμε αν υπάρχει ήδη αρχείο
-        if (!driveFileId) {
-            driveFileId = await findDriveFile();
-        }
-        
-        if (driveFileId) {
-            await updateDriveFile(driveFileId, data);
-        } else {
-            driveFileId = await createDriveFile(data);
-            localStorage.setItem('driveFileId', driveFileId);
-        }
-        showSyncToast('✅ Αποθηκεύτηκε στο Drive!', 'success');
-    } catch(e) {
-        if (e.message === 'TOKEN_EXPIRED') {
-            showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
-            googleAccessToken = null;
-            silentTokenRefresh();
-        } else {
-            showSyncToast('❌ Σφάλμα αποθήκευσης', 'error');
-        }
-    }
-    isSyncing = false;
+// ═══════════════════════════════════════════
+//  ΑΣΦΑΛΗΣ ΣΥΓΧΡΟΝΙΣΜΟΣ DRIVE
+// ═══════════════════════════════════════════
+const BACKUP_PREV = BACKUP_FILENAME.replace('.json', '_prev.json');
+const PREV_ROTATE_MS = 30 * 60 * 1000; // το «προηγούμενο αντίγραφο» ανανεώνεται αν το κύριο αρχείο είναι παλαιότερο από 30'
+
+function dataObj() { return {customers, stock, sales, purchases, priceHistory}; }
+function dbSig(o) { return JSON.stringify([o.customers||[], o.stock||{}, o.sales||[], o.purchases||[], o.priceHistory||[]]); }
+function validData(o) { return !!(o && o.customers && o.stock && o.sales && o.purchases); }
+function dataSummary(o) { return `${(o.customers||[]).length} πελάτες · ${(o.sales||[]).length} πωλήσεις · ${(o.purchases||[]).length} παραλαβές`; }
+function fmtSyncTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('el-GR') + ' ' + d.toLocaleTimeString('el-GR', {hour:'2-digit', minute:'2-digit'});
+}
+function diffCounts(a, b) {
+  let onlyA = 0, onlyB = 0;
+  ['customers','sales','purchases','priceHistory'].forEach(k=>{
+    const sa = new Set((a[k]||[]).map(x=>JSON.stringify(x))), sb = new Set((b[k]||[]).map(x=>JSON.stringify(x)));
+    sa.forEach(x=>{ if (!sb.has(x)) onlyA++; });
+    sb.forEach(x=>{ if (!sa.has(x)) onlyB++; });
+  });
+  if (JSON.stringify(a.stock||{}) !== JSON.stringify(b.stock||{})) { onlyA++; onlyB++; }
+  return {onlyA, onlyB};
+}
+async function findDriveFileMeta(name) {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${name}'&fields=files(id,modifiedTime)`, { headers: { 'Authorization': 'Bearer ' + googleAccessToken } });
+  if (res.status === 401) throw new Error('TOKEN_EXPIRED');
+  const d = await res.json();
+  return d.files && d.files.length ? d.files[0] : null;
+}
+// Κρατά τα τοπικά δεδομένα πριν αντικατασταθούν (διατηρείται και μετά από επανεκκίνηση)
+function backupLocalBeforeSync() {
+  try { localStorage.setItem('rakiPresync', JSON.stringify({time:new Date().toISOString(), data:dataObj()})); } catch(e) {}
+}
+// Εφαρμογή δεδομένων από το Drive / από αντίγραφο, με καταγραφή στο ιστορικό Αναίρεσης
+function applyIncomingData(o) {
+  saveToHistory('before-sync');
+  customers = o.customers || [];
+  stock = o.stock || { home: {'0.5':0,'1.5':0,'5':0}, work: {'0.5':0,'1.5':0,'5':0} };
+  sales = o.sales || [];
+  purchases = o.purchases || [];
+  priceHistory = o.priceHistory || [];
+  saveData();
+  if (typeof updateCustomerSelect === 'function') updateCustomerSelect();
+  saveToHistory('drive-sync');
+}
+function showSyncActionToast(msg, label, fn) {
+  const old = document.getElementById('syncToast'); if (old) old.remove();
+  const t = document.createElement('div');
+  t.id = 'syncToast';
+  t.style.cssText = 'position:fixed;top:90px;left:3vw;right:3vw;transform:none;background:#4CAF50;color:white;padding:8px 10px 8px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:space-between;gap:12px';
+  const span = document.createElement('span'); span.textContent = msg;
+  const b = document.createElement('button');
+  b.textContent = '↩ ' + label;
+  b.style.cssText = 'background:rgba(255,255,255,.95);color:#1d5c34;border:none;border-radius:14px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap';
+  b.onclick = () => { t.remove(); fn(); };
+  t.appendChild(span); t.appendChild(b);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 12000);
 }
 
-// Φόρτωση από Google Drive
-async function syncFromDrive() {
-    if (!googleAccessToken || isSyncing) return;
-    isSyncing = true;
-    showSyncToast('☁️ Φόρτωση από Drive...', 'info');
-    
-    try {
-        if (!driveFileId) {
-            driveFileId = await findDriveFile();
-            if (driveFileId) localStorage.setItem('driveFileId', driveFileId);
-        }
-        
-        if (!driveFileId) {
-            // Δεν υπάρχει αρχείο — ανέβασε τα τοπικά
-            showSyncToast('📤 Δεν βρέθηκε αρχείο. Δημιουργία...', 'info');
-            await syncToDrive();
-            isSyncing = false;
-            return;
-        }
-        
-        const content = await downloadDriveFile(driveFileId);
-        const data = JSON.parse(content);
-        
-        if (data.customers && data.stock && data.sales && data.purchases) {
-            customers = data.customers || [];
-            stock = data.stock || { home: {'0.5':0,'1.5':0,'5':0}, work: {'0.5':0,'1.5':0,'5':0} };
-            sales = data.sales || [];
-            purchases = data.purchases || [];
-            priceHistory = data.priceHistory || [];
-            saveData();
-            showSyncToast('✅ Δεδομένα φορτώθηκαν από Drive!', 'success');
-        }
-    } catch(e) {
-        if (e.message === 'TOKEN_EXPIRED') {
-            showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
-            googleAccessToken = null;
-            silentTokenRefresh();
-        } else {
-            showSyncToast('❌ Σφάλμα φόρτωσης', 'error');
-        }
+// ── Επαναφορά τοπικών από το αντίγραφο «πριν τον τελευταίο συγχρονισμό» ──
+function restoreLocalPresync() {
+  try {
+    const o = JSON.parse(localStorage.getItem('rakiPresync') || 'null');
+    if (!o || !validData(o.data)) { showSyncToast('⚠️ Δεν υπάρχει αντίγραφο', 'error'); return; }
+    backupLocalBeforeSync();
+    applyIncomingData(o.data);
+    showSyncActionToast('✅ Επαναφέρθηκαν τα τοπικά δεδομένα', 'Αναίρεση', undoAction);
+  } catch(e) { showSyncToast('❌ Δεν ήταν δυνατή η επαναφορά', 'error'); }
+}
+
+// ── Διάλογος επιλογής ─────────────────────────
+function scEl(id) { return document.getElementById(id); }
+function scArm(btn, warnText, fn) {
+  const w = scEl('sc-warn');
+  if (btn.dataset.armed === '1') { clearTimeout(btn._t); fn(); return; }
+  document.querySelectorAll('#syncChoiceDialog [data-armable]').forEach(scDisarm);
+  btn.dataset.armed = '1'; btn._orig = btn.innerHTML; btn._style = btn.style.cssText;
+  btn.innerHTML = '⚠️ Σίγουρα; Πάτα ξανά';
+  btn.style.background = '#c77700'; btn.style.color = '#fff'; btn.style.borderColor = '#c77700'; btn.style.textDecoration = 'none';
+  if (w) w.textContent = warnText;
+  btn._t = setTimeout(() => scDisarm(btn), 4500);
+}
+function scDisarm(btn) {
+  if (btn.dataset.armed !== '1') return;
+  btn.dataset.armed = '0'; btn.innerHTML = btn._orig; btn.style.cssText = btn._style;
+  const w = scEl('sc-warn'); if (w) w.textContent = '';
+}
+// opts.auto: αυτόματος έλεγχος κατά την εκκίνηση — το παράθυρο εμφανίζεται ΜΟΝΟ αν υπάρχει διαφορά
+function showSyncChoiceDialog(opts) {
+  opts = opts || {};
+  const old = scEl('syncChoiceDialog'); if (old) old.remove();
+  const d = document.createElement('div');
+  d.id = 'syncChoiceDialog';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.6);display:' + (opts.auto ? 'none' : 'flex') + ';align-items:center;justify-content:center;padding:16px;';
+  d.onclick = e => { if (e.target === d) d.remove(); };
+  const danger = 'width:100%;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.35;border-radius:10px;background:transparent;color:#c77700;border:1px solid #c77700;cursor:pointer;font-family:inherit;';
+  d.innerHTML = `
+    <div style="background:var(--card-bg,#1e1e1e);color:var(--text-color,inherit);border-radius:16px;padding:20px;max-width:340px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid var(--border-color,rgba(255,255,255,0.12));max-height:94vh;overflow:auto">
+      <div style="font-size:16px;font-weight:700;text-align:center;margin-bottom:12px">☁️ Συγχρονισμός Drive</div>
+      <div id="sc-info" style="font-size:12px;border:1px solid var(--border-color,#444);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.5">Έλεγχος Drive…</div>
+      <button onclick="scEl('syncChoiceDialog').remove()" style="width:100%;padding:16px;font-size:16px;font-weight:700;border-radius:12px;background:var(--hover-bg,#3d3d3d);color:inherit;border:1px solid var(--border-color,rgba(255,255,255,.35));cursor:pointer;font-family:inherit">✔️ Παράλειψη<div style="font-size:11px;font-weight:400;opacity:.7;margin-top:2px">δεν αλλάζει τίποτα</div></button>
+      <div style="font-size:11px;opacity:.6;text-align:center;margin:22px 0 8px">Ενέργειες που αντικαθιστούν δεδομένα</div>
+      <button id="sc-up" data-armable="1" disabled style="${danger}opacity:.45">⬆️ Αντικατάσταση του Drive με τα δεδομένα αυτής της συσκευής</button>
+      <button id="sc-down" data-armable="1" disabled style="${danger}opacity:.45;margin-top:14px">⬇️ Αντικατάσταση των τοπικών με τα δεδομένα του Drive</button>
+      <div id="sc-warn" style="min-height:36px;font-size:12px;color:#c77700;text-align:center;margin-top:10px;line-height:1.4"></div>
+      <div id="sc-links" style="display:flex;flex-direction:column;gap:8px;margin-top:4px"></div>
+    </div>`;
+  document.body.appendChild(d);
+  scLoad(opts);
+}
+async function scLoad(opts) {
+  opts = opts || {};
+  const info = scEl('sc-info'), up = scEl('sc-up'), down = scEl('sc-down'), links = scEl('sc-links');
+  const local = dataObj(), lstamp = localStorage.getItem('rakiLastChange') || localStorage.getItem('lastSave');
+  let remote = null, meta = null, prevMeta = null, failed = false;
+  try {
+    meta = await findDriveFileMeta(BACKUP_FILENAME);
+    prevMeta = await findDriveFileMeta(BACKUP_PREV);
+    if (meta) { const j = JSON.parse(await downloadDriveFile(meta.id)); remote = validData(j) ? j : null; }
+  } catch(e) { failed = true; }
+  const dlg = scEl('syncChoiceDialog');
+  if (!dlg) return;
+  const same = !!(remote && dbSig(remote) === dbSig(local));
+  if (opts.auto) {
+    if (failed) { dlg.remove(); return; }                                   // δεν ήταν δυνατός ο έλεγχος: καμία διακοπή
+    if (same) { dlg.remove(); showSyncToast('✅ Συγχρονισμένο με το Drive', 'success'); return; }
+    dlg.style.display = 'flex';                                             // υπάρχει διαφορά: ρωτάμε
+  }
+
+  let localNewer = false, remoteNewer = false;
+  if (lstamp && meta && !same) {
+    const diff = new Date(lstamp) - new Date(meta.modifiedTime);
+    if (diff > 120000) localNewer = true; else if (diff < -120000) remoteNewer = true;
+  }
+  const badge = on => on ? ' <span style="background:#2e9e50;color:#fff;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700">νεότερο</span>' : '';
+  let html = `<div>📱 <b>Αυτή η συσκευή</b>${badge(localNewer)}<br><span style="opacity:.8">${dataSummary(local)}</span><br><span style="opacity:.6">Τελευταία αλλαγή: ${fmtSyncTime(lstamp)}</span></div>`;
+  if (failed) html += `<div style="margin-top:8px;color:#c77700">⚠️ Δεν ήταν δυνατός ο έλεγχος του Drive.</div>`;
+  else if (!meta) html += `<div style="margin-top:8px">☁️ <b>Drive</b><br><span style="opacity:.8">Δεν υπάρχει ακόμα αρχείο.</span></div>`;
+  else {
+    html += `<div style="margin-top:8px">☁️ <b>Drive</b>${badge(remoteNewer)}<br><span style="opacity:.8">${remote ? dataSummary(remote) : '—'}</span><br><span style="opacity:.6">Αποθηκεύτηκε: ${fmtSyncTime(meta.modifiedTime)}</span></div>`;
+    if (same) html += `<div style="margin-top:8px;color:#2e9e50;font-weight:600">✅ Τα δεδομένα είναι ίδια — δεν χρειάζεται συγχρονισμός.</div>`;
+    else if (remote) { const dc = diffCounts(local, remote); html += `<div style="margin-top:8px;color:#c77700">Διαφορές: ${dc.onlyA} εγγραφές μόνο εδώ · ${dc.onlyB} μόνο στο Drive</div>`; }
+  }
+  info.innerHTML = html;
+
+  if (!same) {
+    up.disabled = false; up.style.opacity = '1';
+    up.onclick = () => scArm(up,
+      remote ? `Θα αντικατασταθεί το Drive (${(remote.sales||[]).length} πωλήσεις) με τα τοπικά (${local.sales.length} πωλήσεις). Το Drive θα κρατήσει το προηγούμενο αντίγραφο.`
+             : 'Θα αποθηκευτούν τα τοπικά δεδομένα στο Drive.',
+      () => { scEl('syncChoiceDialog').remove(); syncToDrive({manual:true}); });
+    if (meta) {
+      down.disabled = false; down.style.opacity = '1';
+      down.onclick = () => scArm(down,
+        remote ? `Θα αντικατασταθούν τα τοπικά (${local.sales.length} πωλήσεις) με του Drive (${(remote.sales||[]).length} πωλήσεις). Θα μπορείς να το αναιρέσεις.`
+               : 'Θα αντικατασταθούν τα τοπικά δεδομένα με του Drive. Θα μπορείς να το αναιρέσεις.',
+        () => { scEl('syncChoiceDialog').remove(); syncFromDrive(); });
     }
-    isSyncing = false;
+  }
+  const linkStyle = 'background:none;border:none;color:inherit;opacity:.7;font-size:11.5px;text-decoration:underline;cursor:pointer;font-family:inherit;line-height:1.35;padding:2px';
+  if (prevMeta) {
+    const b = document.createElement('button');
+    b.dataset.armable = '1'; b.style.cssText = linkStyle;
+    b.textContent = '↩ Προηγούμενο αντίγραφο Drive (' + fmtSyncTime(prevMeta.modifiedTime) + ')';
+    b.onclick = () => scArm(b, 'Τα τοπικά δεδομένα θα αντικατασταθούν με το προηγούμενο αντίγραφο του Drive. Θα μπορείς να το αναιρέσεις.',
+      () => { scEl('syncChoiceDialog').remove(); syncFromDrive('prev'); });
+    links.appendChild(b);
+  }
+  try {
+    const ps = JSON.parse(localStorage.getItem('rakiPresync') || 'null');
+    if (ps && validData(ps.data)) {
+      const b = document.createElement('button');
+      b.dataset.armable = '1'; b.style.cssText = linkStyle;
+      b.textContent = '↩ Τα τοπικά δεδομένα πριν τον τελευταίο συγχρονισμό (' + fmtSyncTime(ps.time) + ')';
+      b.onclick = () => scArm(b, 'Τα τοπικά δεδομένα θα αντικατασταθούν με εκείνα που είχες πριν τον τελευταίο συγχρονισμό.',
+        () => { scEl('syncChoiceDialog').remove(); restoreLocalPresync(); });
+      links.appendChild(b);
+    }
+  } catch(e) {}
+}
+
+// ── Αποθήκευση στο Drive ─────────────────────
+// opts.manual: ρητή ενέργεια του χρήστη (πάντα κρατά προηγούμενο αντίγραφο).
+// Η αυτόματη αποθήκευση κρατά προηγούμενο αντίγραφο μόνο όταν το αρχείο του Drive είναι παλαιότερο από 30'.
+async function syncToDrive(opts) {
+  opts = opts || {};
+  if (!googleAccessToken || isSyncing) return;
+  isSyncing = true;
+  showSyncToast('☁️ Αποθήκευση στο Drive...', 'info');
+  const data = JSON.stringify({
+    customers, stock, sales, purchases, priceHistory,
+    exportDate: new Date().toISOString(),
+    version: '3.4'
+  });
+  let rotated = false, skipped = false;
+  try {
+    const main = await findDriveFileMeta(BACKUP_FILENAME);
+    if (main) {
+      driveFileId = main.id;
+      localStorage.setItem('driveFileId', driveFileId);
+      const age = Date.now() - new Date(main.modifiedTime).getTime();
+      if (opts.manual || age > PREV_ROTATE_MS) {
+        let old = null;
+        try { old = await downloadDriveFile(main.id); } catch(e) { if (e.message === 'TOKEN_EXPIRED') throw e; }
+        if (old !== null) {
+          let same = false;
+          try { same = dbSig(JSON.parse(old)) === dbSig(dataObj()); } catch(e) {}
+          if (same) { if (!opts.manual) skipped = true; }
+          else {
+            const prev = await findDriveFileMeta(BACKUP_PREV);
+            if (prev) await updateDriveFile(prev.id, old); else await createDriveFile(old, BACKUP_PREV);
+            rotated = true;
+          }
+        }
+      }
+      if (!skipped) await updateDriveFile(main.id, data);
+    } else {
+      driveFileId = await createDriveFile(data);
+      localStorage.setItem('driveFileId', driveFileId);
+    }
+    if (opts.manual && rotated) showSyncActionToast('✅ Αποθηκεύτηκε στο Drive!', 'Αναίρεση', () => syncFromDrive('prev'));
+    else showSyncToast('✅ Αποθηκεύτηκε στο Drive!', 'success');
+  } catch(e) {
+    if (e.message === 'TOKEN_EXPIRED') {
+      showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
+      googleAccessToken = null;
+      silentTokenRefresh();
+    } else {
+      showSyncToast('❌ Σφάλμα αποθήκευσης', 'error');
+    }
+  }
+  isSyncing = false;
+}
+
+// ── Φόρτωση από το Drive (which: 'main' | 'prev') ──
+async function syncFromDrive(which) {
+  which = which === 'prev' ? 'prev' : 'main';
+  if (!googleAccessToken || isSyncing) return;
+  isSyncing = true;
+  showSyncToast('☁️ Φόρτωση από Drive...', 'info');
+  try {
+    let fileId;
+    if (which === 'prev') {
+      const m = await findDriveFileMeta(BACKUP_PREV);
+      if (!m) { showSyncToast('⚠️ Δεν υπάρχει προηγούμενο αντίγραφο στο Drive', 'error'); isSyncing = false; return; }
+      fileId = m.id;
+    } else {
+      if (!driveFileId) {
+        driveFileId = await findDriveFile();
+        if (driveFileId) localStorage.setItem('driveFileId', driveFileId);
+      }
+      if (!driveFileId) {
+        // Δεν υπάρχει αρχείο — ανέβασε τα τοπικά
+        showSyncToast('📤 Δεν βρέθηκε αρχείο. Δημιουργία...', 'info');
+        isSyncing = false;
+        await syncToDrive({manual:true});
+        return;
+      }
+      fileId = driveFileId;
+    }
+    const content = await downloadDriveFile(fileId);
+    const data = JSON.parse(content);
+    if (validData(data)) {
+      backupLocalBeforeSync();
+      applyIncomingData(data);
+      try { localStorage.setItem('rakiLastChange', data.exportDate || new Date().toISOString()); } catch(e) {}
+      showSyncActionToast(which === 'prev' ? '✅ Φορτώθηκε το προηγούμενο αντίγραφο!' : '✅ Δεδομένα φορτώθηκαν από Drive!', 'Αναίρεση', undoAction);
+    } else {
+      showSyncToast('❌ Το αρχείο του Drive δεν έχει δεδομένα', 'error');
+    }
+  } catch(e) {
+    if (e.message === 'TOKEN_EXPIRED') {
+      showSyncToast('🔄 Ανανέωση σύνδεσης...', 'info');
+      googleAccessToken = null;
+      silentTokenRefresh();
+    } else {
+      showSyncToast('❌ Σφάλμα φόρτωσης', 'error');
+    }
+  }
+  isSyncing = false;
 }
 
 async function findDriveFile() {
@@ -9712,8 +9888,8 @@ async function findDriveFile() {
     return data.files && data.files.length > 0 ? data.files[0].id : null;
 }
 
-async function createDriveFile(content) {
-    const metadata = { name: BACKUP_FILENAME, parents: ['appDataFolder'] };
+async function createDriveFile(content, name) {
+    const metadata = { name: name || BACKUP_FILENAME, parents: ['appDataFolder'] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([content], { type: 'application/json' }));
@@ -9788,7 +9964,8 @@ function showSyncToast(message, type) {
 let driveSaveTimeout;
 const originalSaveData = saveData;
 saveData = function() {
-    originalSaveData();
+  originalSaveData();
+  try { localStorage.setItem('rakiLastChange', new Date().toISOString()); } catch(e) {}
     idbSaveSnapshot();
     if (googleAccessToken) {
         clearTimeout(driveSaveTimeout);
