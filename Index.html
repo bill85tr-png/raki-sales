@@ -3593,6 +3593,13 @@
                 <button class="quantity-control-btn" onclick="increaseQuantity('sale')"><i class="fas fa-plus"></i></button>
             </div>
             <input type="hidden" id="saleQty" value="1">
+            <!-- Μπουκάλι 5L -->
+            <div id="saleBottleFeeBox" style="display:none; margin:8px 0;">
+                <div class="slide-toggle-container">
+                    <div class="slide-toggle-label"><div class="slide-toggle-icon"><i class="fas fa-bottle-water"></i></div><div class="toggle-explanation">Χρέωση μπουκαλιού 5L (+1€)</div></div>
+                    <label class="slide-toggle"><input type="checkbox" id="saleChargeBottle" onchange="calculateSalePrice()"><span class="slide-toggle-slider"></span></label>
+                </div>
+            </div>
             <!-- Τοποθεσία -->
             <div class="toggle-group">
                 <div class="toggle-group-title">Τοποθεσία</div>
@@ -4327,8 +4334,8 @@
 
         // Υπολογισμός τιμής για παραλαβή
         function calculatePurchasePrice() {
-            // Βρίσκουμε το επιλεγμένο κουμπί
-            const selectedBtn = document.querySelector('.bottle-buttons-container .bottle-btn.active');
+            // Βρίσκουμε το επιλεγμένο κουμπί (μόνο μέσα στο modal παραλαβής)
+            const selectedBtn = document.querySelector('#purchaseModal .bottle-buttons-container .bottle-btn.active');
             const type = selectedBtn ? parseFloat(selectedBtn.dataset.type) : 1.5;
             const qty = parseInt(document.getElementById('purchaseQty').value) || 1;
             const date = document.getElementById('purchaseDate').value;
@@ -4343,14 +4350,28 @@
         }
 
         // Υπολογισμός τιμής για πώληση
+        const BOTTLE_5L_FEE = 1.00; // χρέωση πλαστικού μπουκαλιού 5L (€ ανά μπουκάλι)
+
+        function getSaleBottleFee() {
+            const selectedBtn = document.querySelector('#saleModal .bottle-buttons-container .bottle-btn.active');
+            const is5L = selectedBtn && parseFloat(selectedBtn.dataset.type) === 5;
+            const chk = document.getElementById('saleChargeBottle');
+            return (is5L && chk && chk.checked) ? BOTTLE_5L_FEE : 0;
+        }
+
         function calculateSalePrice() {
-            const selectedBtn = document.querySelector('.bottle-buttons-container .bottle-btn.active');
+            const selectedBtn = document.querySelector('#saleModal .bottle-buttons-container .bottle-btn.active');
             const type = selectedBtn ? parseFloat(selectedBtn.dataset.type) : 1.5;
             const qty = parseInt(document.getElementById('saleQty').value) || 1;
             const date = document.getElementById('saleDate').value;
 
+            // Εμφάνιση επιλογής μπουκαλιού μόνο για 5L
+            const feeBox = document.getElementById('saleBottleFeeBox');
+            if (feeBox) feeBox.style.display = (type === 5) ? '' : 'none';
+            const bottleFee = getSaleBottleFee();
+
             const pricePerLiterForDate = getPricePerLiter(date);
-            const fullPrice = parseFloat((type * qty * pricePerLiterForDate).toFixed(2));
+            const fullPrice = parseFloat((type * qty * pricePerLiterForDate + qty * bottleFee).toFixed(2));
 
             // Αφαίρεση credit αν είναι ενεργό
             const afterCredit = Math.max(0, parseFloat((fullPrice - saleUseCreditAmount).toFixed(2)));
@@ -4398,6 +4419,8 @@
                 document.getElementById('salePaymentPending').checked = true;
                 document.getElementById('salePaymentPaid').checked = false;
                 document.getElementById('saleIsGift').checked = false;
+                const chargeBottleChk = document.getElementById('saleChargeBottle');
+                if (chargeBottleChk) chargeBottleChk.checked = false;
                 document.getElementById('salePriceDisplay').textContent = '';
                 calculateSalePrice();
                 resetCreditBanner();
@@ -5059,7 +5082,8 @@
             
             // Υπολογισμός τιμής βάσει της ημερομηνίας
             const pricePerLiterForDate = getPricePerLiter(date);
-            const total = isGift ? 0 : qty * parseFloat(type) * pricePerLiterForDate;
+            const bottleFee = (parseFloat(type) === 5) ? getSaleBottleFee() : 0;
+            const total = isGift ? 0 : (qty * parseFloat(type) * pricePerLiterForDate + qty * bottleFee);
             
             const dateTime = new Date(`${date}T${time}`);
             const formattedDate = dateTime.toLocaleDateString('el-GR');
@@ -5076,6 +5100,7 @@
                 quantity: qty,
                 location: location,
                 price: pricePerLiterForDate,
+                bottleFee: bottleFee,
                 total: total,
                 payment: payment,
                 gift: isGift,
@@ -6324,7 +6349,9 @@ if (filteredCustomers.length === 0) {
                 if (type === 'sale') {
                     const pricePerLiterForDate = getPricePerLiter(date);
                     transaction.gift = isGift;
-                    transaction.total = isGift ? 0 : quantity * parseFloat(bottleType) * pricePerLiterForDate;
+                    const keptFee = (parseFloat(bottleType) === 5) ? (transaction.bottleFee || 0) : 0;
+                    transaction.bottleFee = keptFee;
+                    transaction.total = isGift ? 0 : (quantity * parseFloat(bottleType) * pricePerLiterForDate + quantity * keptFee);
                     transaction.price = pricePerLiterForDate;
 
                     if (isGift) {
@@ -7816,7 +7843,9 @@ function toggleEditSortDropdown() {
                 sale.gift = isGift;
 
                 const pricePerLiterForDate = getPricePerLiter(date);
-                sale.total = isGift ? 0 : quantity * parseFloat(type) * pricePerLiterForDate;
+                const keptFee = (parseFloat(type) === 5) ? (sale.bottleFee || 0) : 0;
+                sale.bottleFee = keptFee;
+                sale.total = isGift ? 0 : (quantity * parseFloat(type) * pricePerLiterForDate + quantity * keptFee);
                 sale.price = pricePerLiterForDate;
 
                 if (isGift) {
